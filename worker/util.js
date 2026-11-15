@@ -13,6 +13,14 @@ export function json(obj, status = 200, headers = {}) {
   });
 }
 
+// Same, for a body that is already a JSON string (avoids re-serializing large data).
+export function jsonText(text, status = 200, headers = {}) {
+  return new Response(text, {
+    status,
+    headers: Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, headers),
+  });
+}
+
 // Security headers on every API response (the _headers file only covers static files).
 export function secure(res) {
   const r = new Response(res.body, res);

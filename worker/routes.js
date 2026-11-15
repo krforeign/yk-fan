@@ -1,6 +1,6 @@
 // API routes. Each returns a Response (or throws HttpError).
-import { json, readJson, clientIp, sleep, HttpError } from './util.js';
-import { load, save, hasStore, db } from './store.js';
+import { json, jsonText, readJson, clientIp, sleep, HttpError } from './util.js';
+import { load, save, currentUpdated, hasStore, db } from './store.js';
 import { issue, verify, checkPassword, isAdmin, bearer } from './auth.js';
 import { hit, over } from './ratelimit.js';
 
@@ -8,8 +8,10 @@ const unauthorized = () => json({ error: 'unauthorized', code: 'auth' }, 401);
 const notAllowed = allow => json({ error: 'method not allowed' }, 405, { Allow: allow });
 
 /* ---- GET /api/data (public, briefly cached)  ·  PUT /api/data (admin) ---- */
-const MAX_BYTES = 900 * 1024;
+const MAX_BYTES = 8 * 1024 * 1024; // the data is split across D1 rows, so this is only a sanity cap
 const cacheKey = origin => new Request(origin + '/api/data?__edge=1');
+// {"storage":..., ...stored document}; built by string so the stored JSON is never re-parsed
+const withStorage = (text, storage) => '{"storage":' + storage + (text.length > 2 ? ',' + text.slice(1) : '}');
 
 export async function data(request, env, ctx, url) {
   if (request.method === 'GET') {
@@ -18,24 +20,25 @@ export async function data(request, env, ctx, url) {
     const edge = typeof caches !== 'undefined' ? caches.default : null;
     if (!fresh && edge) { const hitRes = await edge.match(cacheKey(url.origin)); if (hitRes) return hitRes; }
     const d = await load(env, url.origin, { fresh });
-    const res = json(Object.assign({}, d, { storage: hasStore(env) }), 200, { 'Cache-Control': fresh ? 'no-store' : 'public, max-age=20' });
+    const res = jsonText(withStorage(d.text, hasStore(env)), 200, { 'Cache-Control': fresh ? 'no-store' : 'public, max-age=20' });
     if (!fresh && edge) ctx.waitUntil(edge.put(cacheKey(url.origin), res.clone()).catch(() => {}));
     return res;
   }
   if (request.method === 'PUT') {
     if (!(await isAdmin(env, request))) return unauthorized();
-    const b = await readJson(request);
+    const b = await readJson(request, MAX_BYTES + 64 * 1024);
     if (!Array.isArray(b.songs)) return json({ error: 'songs must be an array', code: 'bad_request' }, 400);
     if (!hasStore(env)) return json({ error: 'storage not configured', code: 'no_store' }, 501);
-    const cur = await load(env, url.origin, { fresh: true });
-    if (b.base && cur.updated && b.base !== cur.updated) {
-      return json({ error: 'a newer version was saved', code: 'conflict', updated: cur.updated }, 409);
+    const curUpdated = await currentUpdated(env, url.origin);
+    if (b.base && curUpdated && b.base !== curUpdated) {
+      return json({ error: 'a newer version was saved', code: 'conflict', updated: curUpdated }, 409);
     }
-    const out = { v: 2, updated: new Date().toISOString(), songs: b.songs, cheers: Array.isArray(b.cheers) ? b.cheers : [] };
-    if (new TextEncoder().encode(JSON.stringify(out)).length > MAX_BYTES) return json({ error: 'data too large', code: 'too_large' }, 413);
-    await save(env, out);
+    const updated = new Date().toISOString();
+    const text = JSON.stringify({ v: 2, updated, songs: b.songs, cheers: Array.isArray(b.cheers) ? b.cheers : [] });
+    if (text.length * 3 > MAX_BYTES && new TextEncoder().encode(text).length > MAX_BYTES) return json({ error: 'data too large', code: 'too_large' }, 413);
+    await save(env, text, updated);
     if (typeof caches !== 'undefined') ctx.waitUntil(caches.default.delete(cacheKey(url.origin)).catch(() => {}));
-    return json({ ok: true, data: out });
+    return jsonText('{"ok":true,"data":' + text + '}');
   }
   return notAllowed('GET, PUT');
 }
