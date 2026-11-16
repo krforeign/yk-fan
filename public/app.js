@@ -33,7 +33,7 @@ Object.assign(T.ja, {
   noVideo:'動画はまだ登録されていません', noVideoOwner:'編集画面で YouTube URL を入れると、ここに動画が表示されます。', ytApply:'適用',
   timerNote:'動画がないため、タイマーで時間が進みます。', loading:'読み込み中…', loadErr:'データを読み込めませんでした。再読み込みしてください。',
   admin:'管理', adminH:'管理者ログイン', adminP:'管理者パスワードを入力すると、この端末でコールガイドを編集できます (30日間有効)。', password:'パスワード', login:'ログイン', logout:'ログアウト',
-  loginErr:'パスワードが違います。', loginRate:'試行回数が多すぎます。15分ほど待ってからもう一度お試しください。', loginNoPw:'ADMIN_PASSWORD が設定されていません (Cloudflare のシークレット)。', loggedIn:'ログイン中です。曲ページの「編集」から編集できます。',
+  loginErr:'パスワードが違います。', loginRate:'試行回数が多すぎます。15分ほど待ってからもう一度お試しください。', loginNoPw:'ADMIN_PASSWORD が設定されていません。Cloudflare の Settings → Variables and Secrets に「Secret」として追加し、もう一度デプロイしてください。', loggedIn:'ログイン中です。曲ページの「編集」から編集できます。',
   storageOk:'保存先: Upstash Redis に接続済み', storageNo:'保存先が未設定です。README の手順で Upstash Redis を接続してください。それまでは「JSON を書き出す」で保存できます。',
   exportJson:'JSON を書き出す', importJson:'JSON を読み込む', importDone:'JSON を読み込みました。内容を確認して「保存して公開」を押してください。', importErr:'JSON を読み込めませんでした。',
   lrcH:'LRCLIB から同期歌詞を探す', lrcP:'LRCLIB (無料の歌詞データベース) から LRC を探して、原文とタイミングを一度に読み込みます。音源と動画で前奏の長さが違うときは、3段階の「全体を動かす」で合わせてください。',
@@ -100,7 +100,7 @@ Object.assign(T.ko, {
   noVideo:'아직 영상이 등록되지 않았어요', noVideoOwner:'편집 화면에서 YouTube URL을 넣으면 여기에 영상이 표시돼요.', ytApply:'적용',
   timerNote:'영상이 없어서 타이머로 시간이 흘러가요.', loading:'불러오는 중…', loadErr:'데이터를 불러오지 못했어요. 새로고침해 주세요.',
   admin:'관리', adminH:'관리자 로그인', adminP:'관리자 비밀번호를 입력하면 이 기기에서 콜 가이드를 편집할 수 있어요 (30일 유지).', password:'비밀번호', login:'로그인', logout:'로그아웃',
-  loginErr:'비밀번호가 틀렸어요.', loginRate:'시도 횟수가 너무 많아요. 15분쯤 뒤에 다시 시도해 주세요.', loginNoPw:'ADMIN_PASSWORD가 설정되지 않았어요 (Cloudflare 시크릿).', loggedIn:'로그인되어 있어요. 곡 페이지의 \'편집\'에서 편집할 수 있어요.',
+  loginErr:'비밀번호가 틀렸어요.', loginRate:'시도 횟수가 너무 많아요. 15분쯤 뒤에 다시 시도해 주세요.', loginNoPw:'ADMIN_PASSWORD가 설정되지 않았어요. Cloudflare의 Settings → Variables and Secrets에 ‘Secret’ 유형으로 추가하고 다시 배포해 주세요.', loggedIn:'로그인되어 있어요. 곡 페이지의 \'편집\'에서 편집할 수 있어요.',
   storageOk:'저장소: Upstash Redis 연결됨', storageNo:'저장소가 설정되지 않았어요. README 순서대로 Upstash Redis를 연결하세요. 그 전까지는 \'JSON 내보내기\'로 저장할 수 있어요.',
   exportJson:'JSON 내보내기', importJson:'JSON 불러오기', importDone:'JSON을 불러왔어요. 확인하고 \'저장하고 공개\'를 누르세요.', importErr:'JSON을 읽지 못했어요.',
   lrcH:'LRCLIB에서 싱크 가사 찾기', lrcP:'LRCLIB(무료 가사 데이터베이스)에서 LRC를 찾아 원문과 타이밍을 한 번에 불러와요. 음원과 영상의 전주 길이가 다르면 3단계의 \'전체 이동\'으로 맞춰 주세요.',
@@ -360,6 +360,8 @@ function render(keep){
     const songScreen = !!(song&&!editing);
     if(songScreen && window.scrollY>0) window.scrollTo(0,0); // let the phone's toolbars settle before locking the page
     document.documentElement.classList.toggle('song-root', songScreen);
+    document.documentElement.classList.toggle('song-playing', songScreen && r.view==='song' && S.compactSong===r.id);
+    if(!(songScreen && S.compactSong===r.id)){ S.compactSong=null; wasRun=false }
     if(songScreen) setVVH();
     root.innerHTML = `<div class="app ${song?'media-page':''} ${song&&!editing?'song-mode':''}"><aside class="side" id="side" aria-label="Menu"></aside><main>${song?'<div id="obar"></div>'+frame(song, editing):frame(song, editing).replace('<div id="pane">','<div id="obar"></div><div id="pane">')}</main></div>`;
     S.renderedKey = key; sideKey = ''; rebuilt = true;
@@ -1057,17 +1059,18 @@ function songMedia(s){
   return `<div class="player" id="player">
     ${vid?'':`<button type="button" class="pp" data-act="pp" aria-label="play/pause" id="pp"></button>`}
     <span class="clock" id="pclock">0:00.0</span>
+    <a class="pl-back" href="#chant" aria-label="${esc(t('back'))}">←</a><b class="pl-title" lang="ja">${esc(s.title||'')}</b>
     ${vid?'':`<span class="nudge"><button type="button" data-act="nudge" data-v="-1">−1s</button><button type="button" data-act="nudge" data-v="1">+1s</button></span>`}
-    <label class="as"><input type="checkbox" id="autoscroll" ${S.autoScroll?'checked':''}> ${t('autoScroll')}</label>
+    <label class="as"><input type="checkbox" id="autoscroll" ${S.autoScroll?'checked':''}> <span class="as-l">${t('autoScroll')}</span><span class="as-s">${t('autoScrollS')}</span></label>
     ${vid?`<button type="button" class="btn ghost sm mini-btn" data-act="miniVid" aria-pressed="${S.mini}">${ico(S.mini?'arrow_upward':'smart_display')} ${S.mini?t('miniOff'):t('miniOn')}</button>`:''}
     <span class="hint">${vid?'':t('timerNote')}</span>
   </div>${songLivesBox(s)}`;
 }
 function songLivesBox(s){
   const k = songKey(s.title);
-  const ls = LIVES.filter(l=>hasSet(l) && setOf(l).some(x=>songKey(x)===k)).sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
+  const ls = LIVES.filter(l=>hasSet(l) && (S.ghostOn || l.tour!=='ghost') && setOf(l).some(x=>songKey(x)===k)).sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
   const pos = l=>{ const ms=(l.s||[]).length, i=setOf(l).findIndex(x=>songKey(x)===k); return i<ms ? '#'+(i+1) : 'EN'+(i-ms+1) };
-  return `<section class="song-lives" aria-label="${esc(t('songLivesH'))}"><div class="sl-head"><b>${t('songLivesH')}</b><span>${ls.length?t('songLivesN').replace('{n}',ls.length):''}</span></div>${
+  return `<section class="song-lives ${S.slOpen?'open':''}" aria-label="${esc(t('songLivesH'))}"><button type="button" class="sl-head" data-act="slToggle" aria-expanded="${!!S.slOpen}"><b>${t('songLivesH')}</b><span>${ls.length?t('songLivesN').replace('{n}',ls.length):''}</span></button>${
     ls.length ? `<ol class="sl-list" tabindex="0">${ls.map(l=>`<li><span class="sl-d">${fmtD(l.d)}</span><span class="sl-t"><b lang="ja">${esc(l.t.replace(/^米津玄師\s*/,''))}</b><small lang="ja">${esc(l.v)} · <span lang="${S.lang}">${esc(prefName(l.p))}</span></small></span><span class="sl-p">${pos(l)}</span></li>`).join('')}</ol>`
     : `<p class="sl-none">${t('songLivesNone')}</p>`}</section>`;
 }
@@ -1149,12 +1152,23 @@ function followScroll(el, onlyIfHidden){
   if(Math.abs(r.top-want) < 24) return;
   animateTo(()=>window.scrollY, v=>window.scrollTo(0,v), Math.max(0, window.scrollY + (r.top-want)));
 }
-let lastNow = -1, advAt = 0, keepAt = 0;
+let lastNow = -1, advAt = 0, keepAt = 0, wasRun = false;
+const phoneMQ = window.matchMedia ? window.matchMedia('(max-width:900px)') : {matches:false};
+function onPlayStart(){
+  const r = parseRoute(); if(r.view!=='song' || !phoneMQ.matches) return;
+  S.compactSong = r.id; S.slOpen = false;
+  document.documentElement.classList.add('song-playing');
+  const box = document.querySelector('.song-lives'); if(box){ box.classList.remove('open'); const h=box.querySelector('.sl-head'); if(h) h.setAttribute('aria-expanded','false') }
+  if(window.scrollY>0) window.scrollTo(0,0);
+  if(typeof setVVH==='function') setVVH();
+}
 function updatePlayer(force){
   const now = media.now();
   if(Math.abs(now-lastNow) > 0.01){ if(now > lastNow && now-lastNow < 3) advAt = performance.now(); lastNow = now }
   // playing = the player says so, or its clock is still moving (some phone players report their state late)
   const run = media.running || (media.yt && performance.now()-advAt < 1500);
+  if(run && !wasRun) onPlayStart();
+  wasRun = run;
   ['pp','mplay','tplay'].forEach(id=>{ const b=document.getElementById(id); if(b){ const want=run?'pause':'play'; if(force||b.dataset.s!==want){ b.innerHTML=run?ICON_PAUSE:ICON_PLAY; b.dataset.s=want } } });
   const ft = fmt(now);
   ['pclock','mclock','tclock'].forEach(id=>{ const c=document.getElementById(id); if(c && c.textContent!==ft) c.textContent=ft });
@@ -1823,6 +1837,7 @@ root.addEventListener('click', e=>{
     case 'reqOpen': openReq(); return;
     case 'callFilter': S.callFilter = S.callFilter===v ? '' : v; render(true); return;
     case 'chantSort': S.chantSort=v; store.set('yz-sort',v); render(true); return;
+    case 'slToggle': { S.slOpen=!S.slOpen; const box=b.closest('.song-lives'); if(box) box.classList.toggle('open', S.slOpen); b.setAttribute('aria-expanded', String(S.slOpen)); return; }
     case 'miniVid': S.mini=!S.mini; store.set('yz-mini', S.mini?'1':'0'); syncMini(); { const r=parseRoute(); const so=r.view==='song'&&songById(r.id); if(so) setHTML('pane-media', songMedia(so)); updatePlayer(true) } return;
     case 'liveKind': S.liveKind=v; render(true); return;
     case 'liveYear': S.liveYear=v; render(true); return;

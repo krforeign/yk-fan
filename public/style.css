@@ -1526,3 +1526,28 @@ html[lang="ko"] .rc-thx{font-family:"Nanum Myeongjo",serif}
 #ls-tour > .btn{margin:4px 0 12px}
 #ls-tour .tour-head{margin-top:4px}
 .tabs .tl-l{display:none} .tabs .tl-s{display:inline}
+
+/* ---- song page: "played at" header is a button; title/back in the player row only in the compact layout ---- */
+button.sl-head{width:100%;background:none;border:0;border-bottom:1px solid var(--line);color:inherit;font:inherit;text-align:left;cursor:default}
+.player .pl-title,.player .pl-back,.player .as-s{display:none}
+@media (max-width:900px){
+  button.sl-head{cursor:pointer;align-items:center}
+  button.sl-head::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:8px;transition:transform .2s;flex:none}
+  .song-lives.open button.sl-head::after{transform:rotate(-135deg) translateY(-1px)}
+  .song-lives:not(.open) button.sl-head{border-bottom:0}
+  .song-lives:not(.open) .sl-list,.song-lives:not(.open) .sl-none{display:none}
+  button.sl-head span{margin-left:auto}
+  /* playing: video on top, title only, lyrics take the rest */
+  html.song-playing .app.song-mode{grid-template-rows:minmax(0,1fr);padding-top:4px}
+  html.song-playing .song-mode .side,html.song-playing .song-mode #pane-top{display:none}
+  html.song-playing .song-mode .song-page{grid-template-rows:minmax(0,1fr)}
+  html.song-playing .song-mode .player .pl-title{display:block;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:"Shippori Mincho B1",serif;font-weight:700;font-size:15px;color:var(--lav)}
+  html.song-playing .song-mode .player .pl-back{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border:1px solid var(--rule);border-radius:50%;color:var(--ink);text-decoration:none;font-size:15px;order:-1}
+  html.song-playing .song-mode .player .nudge{display:none}
+  html.song-playing .song-mode .player .as{margin-left:0}
+  html.song-playing .song-mode .player .as-l{display:none}
+  html.song-playing .song-mode .player .as-s{display:inline}
+  html.song-playing .song-mode .mini-btn{display:none}
+  html.song-playing .song-mode .song-lives button.sl-head{padding:6px 12px}
+  html.song-playing #req-fab{display:none}
+}

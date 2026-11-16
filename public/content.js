@@ -63,7 +63,7 @@ const T = {
     watchH:'見逃し厳禁', mannerH:'アリーナ公演のマナー',
     back:'← 曲一覧', ytOpen:'YouTube で見る', ytSub:'公式動画を新しいタブで開きます', ytSearch:'YouTube で探す', ytSearchSub:'動画リンクは準備中です',
     playerHint:'YouTubeの再生と同時に ▶ を押すと歌詞が流れます。時刻をタップするとその位置へ。',
-    autoScroll:'自動スクロール', noLines:'まだ歌詞・コールが登録されていません。', ytAt:'この位置からYouTubeで再生',
+    autoScroll:'自動スクロール', autoScrollS:'自動', noLines:'まだ歌詞・コールが登録されていません。', ytAt:'この位置からYouTubeで再生',
     credit:'クレジット', level:'コール難易度', source:'出典',
     /* owner */
     ownerOn:'編集モード', ownerOff:'編集を終える', addSong:'+ 曲を追加', editSong:'この曲を編集', done:'編集を閉じる',
@@ -121,7 +121,7 @@ const T = {
     watchH:'놓치지 말 것', mannerH:'아레나 공연 매너',
     back:'← 곡 목록', ytOpen:'YouTube에서 보기', ytSub:'공식 영상을 새 탭으로 열어요', ytSearch:'YouTube에서 찾기', ytSearchSub:'영상 링크 준비 중이에요',
     playerHint:'YouTube 재생과 동시에 ▶를 누르면 가사가 흘러가요. 시간을 누르면 그 위치로 이동.',
-    autoScroll:'자동 스크롤', noLines:'아직 가사·콜이 등록되지 않았어요.', ytAt:'이 위치부터 YouTube에서 재생',
+    autoScroll:'자동 스크롤', autoScrollS:'자동', noLines:'아직 가사·콜이 등록되지 않았어요.', ytAt:'이 위치부터 YouTube에서 재생',
     credit:'크레딧', level:'콜 난이도', source:'출처',
     ownerOn:'편집 모드', ownerOff:'편집 끝내기', addSong:'+ 곡 추가', editSong:'이 곡 편집', done:'편집 닫기',
     draftBar:'공개하지 않은 변경 사항이 있어요', publish:'저장하고 공개', discard:'변경 취소', discardSure:'정말 취소', cancel:'그만두기',
