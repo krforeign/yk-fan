@@ -14,7 +14,7 @@ Object.assign(T.ja, {
   mixFmt:'並び方', mixPtr:'原文 → 発音 → 翻訳', mixPr:'原文 → 発音', mixTr:'原文 → 翻訳', mixApply:'読み込んで次へ',
   alignH:'原文・発音・翻訳を貼り付けて自動で合わせる', alignP:'原文の下に発音・翻訳が付いたテキストを貼り付けると、内容が近い歌詞の行を探して発音・翻訳を入れます。行の時間(同期)はそのまま残ります。「原文 → 発音 → 翻訳」が1行ずつ交互でも、原文・発音・翻訳がそれぞれまとまっていても大丈夫です。',
   alignOver:'入力済みの発音・翻訳も上書きする', alignBtn:'貼り付けて合わせる',
-  alignDone:'{n}行中 {m}行を歌詞に合わせました (発音 {p} · 翻訳 {r})。', alignMiss:'合う歌詞が見つからなかった行 {k}件:', alignJoin:'細かく分かれていた {k}行は、つなげて歌詞 {g}行に入れました。',
+  alignDone:'{n}行中 {m}行を歌詞に合わせました (発音 {p} · 翻訳 {r})。', alignMiss:'合う歌詞が見つからなかった行 {k}件:', alignJoin:'細かく分かれていた {k}行は、つなげて歌詞 {g}行に入れました。', alignSplit:'{k}行は歌詞 {g}行に分けて入れました。発音・翻訳の区切り位置は自動なので確認してください:',
   mixDone:'{n}行を読み込みました (発音 {p} · 翻訳 {r})。ずれている行がないか確認してください。',
   st2p:'各行の発音(ハングル表記)と韓国語訳を確認して直してください。韓国語モードで歌詞の下に表示されます。+ で行を追加。',
   fOrig:'原文', fPr:'発音', fTr:'翻訳', unsynced:'未設定', bulkH:'1行ずつ貼り付け', bulkPr:'発音 (1行ずつ)', bulkTr:'翻訳 (1行ずつ)', apply:'を反映',
@@ -81,7 +81,7 @@ Object.assign(T.ko, {
   mixFmt:'순서', mixPtr:'원문 → 발음 → 번역', mixPr:'원문 → 발음', mixTr:'원문 → 번역', mixApply:'불러와서 다음으로',
   alignH:'원문·발음·번역 붙여넣어 자동으로 맞추기', alignP:'원문 아래에 발음·번역이 붙은 텍스트를 붙여넣으면, 내용이 비슷한 가사 줄을 찾아 발음·번역을 넣어요. 줄의 시간(싱크)은 그대로 남아요. \'원문 → 발음 → 번역\'이 한 줄씩 번갈아 있어도, 원문·발음·번역이 각각 덩어리로 있어도 돼요.',
   alignOver:'이미 채운 발음·번역도 덮어쓰기', alignBtn:'붙여넣고 맞추기',
-  alignDone:'{n}줄 중 {m}줄을 가사에 맞췄어요 (발음 {p} · 번역 {r}).', alignMiss:'맞는 가사를 못 찾은 줄 {k}개:', alignJoin:'더 잘게 나뉜 {k}줄은 이어 붙여서 가사 {g}줄에 넣었어요.',
+  alignDone:'{n}줄 중 {m}줄을 가사에 맞췄어요 (발음 {p} · 번역 {r}).', alignMiss:'맞는 가사를 못 찾은 줄 {k}개:', alignJoin:'더 잘게 나뉜 {k}줄은 이어 붙여서 가사 {g}줄에 넣었어요.', alignSplit:'{k}줄은 가사 {g}줄로 나눠 넣었어요. 발음·번역을 자른 위치는 자동이라 확인해 주세요:',
   mixDone:'{n}줄을 불러왔어요 (발음 {p} · 번역 {r}). 어긋난 줄이 없는지 확인해 주세요.',
   st2p:'각 줄의 발음(한글 표기)과 한국어 번역을 확인하고 고쳐 주세요. 한국어 모드에서 가사 아래에 표시돼요. +로 줄 추가.',
   fOrig:'원문', fPr:'발음', fTr:'번역', unsynced:'미설정', bulkH:'한 줄씩 붙여넣기', bulkPr:'발음 (한 줄씩)', bulkTr:'번역 (한 줄씩)', apply:'반영',
@@ -1735,45 +1735,85 @@ function lySim(a,b){
   A.forEach((v,k)=>{ if(B.has(k)) inter+=Math.min(v,B.get(k)) });
   return 2*inter/((a.length-1)+(b.length-1));
 }
-// Order-preserving best match (like a diff). Pasted text is often split finer than the synced lyrics,
-// so up to 4 neighbouring pasted rows may be joined to fill one lyric line. Returns [{i0, i1, j}] = rows[i0..i1) -> lines[j].
+// Order-preserving best match (like a diff), in both directions:
+//  - pasted text split finer than the synced lyrics: up to 4 neighbouring pasted rows are joined into one lyric line;
+//  - synced lyrics split finer than the paste: one pasted row is spread over up to 4 neighbouring lyric lines.
+// Returns [{i0, i1, j0, j1}] = rows[i0..i1) -> lines[j0..j1) (one side always has length 1).
 function alignRows(rows, lines){
   const m=rows.length, n=lines.length, MIN=0.5, K=4;
-  const gain=(sim,k)=>sim>=MIN ? k*(sim-MIN)/(1-MIN) : -1;  // a poor join scores below a clean 1:1 match
-  const G=[null];
-  for(let k=1;k<=K;k++){ G[k]=[]; for(let i=0;i+k<=m;i++){ const c=rows.slice(i,i+k).map(r=>r.ly).join(''); G[k][i]=lines.map(l=>gain(lySim(c,l.ly),k)) } }
+  const gain=(sim,k)=>sim>=MIN ? k*(sim-MIN)/(1-MIN) : -1;  // a poor join/split scores below a clean 1:1 match
+  const GJ=[null], GS=[null,null];
+  for(let k=1;k<=K;k++){ GJ[k]=[]; for(let i=0;i+k<=m;i++){ const c=rows.slice(i,i+k).map(r=>r.ly).join(''); GJ[k][i]=lines.map(l=>gain(lySim(c,l.ly),k)) } }
+  for(let k=2;k<=K;k++){ GS[k]=[]; for(let j=0;j+k<=n;j++){ const c=lines.slice(j,j+k).map(l=>l.ly).join(''); GS[k][j]=rows.map(r=>gain(lySim(r.ly,c),k)) } }
   const D=Array.from({length:m+1},()=>new Float64Array(n+1));
-  const C=Array.from({length:m+1},()=>new Int8Array(n+1));   // 0 skip row, -1 skip line, k join k rows
+  const C=Array.from({length:m+1},()=>new Int8Array(n+1));   // 0 skip row, -1 skip line, k>0 join k rows, -k (k>=2) split into k lines
   for(let i=m-1;i>=0;i--) for(let j=n-1;j>=0;j--){
     let best=D[i+1][j], ch=0;
     if(D[i][j+1]>best){ best=D[i][j+1]; ch=-1 }
-    for(let k=1;k<=K && i+k<=m;k++){ const g=G[k][i][j]; if(g>0 && g+D[i+k][j+1]>best+1e-9){ best=g+D[i+k][j+1]; ch=k } }
+    for(let k=1;k<=K && i+k<=m;k++){ const g=GJ[k][i][j]; if(g>0 && g+D[i+k][j+1]>best+1e-9){ best=g+D[i+k][j+1]; ch=k } }
+    for(let k=2;k<=K && j+k<=n;k++){ const g=GS[k][j][i]; if(g>0 && g+D[i+1][j+k]>best+1e-9){ best=g+D[i+1][j+k]; ch=-k } }
     D[i][j]=best; C[i][j]=ch;
   }
   const out=[]; let i=0,j=0;
-  while(i<m && j<n){ const ch=C[i][j]; if(ch>0){ out.push({i0:i, i1:i+ch, j}); i+=ch; j++ } else if(ch===-1) j++; else i++ }
+  while(i<m && j<n){
+    const ch=C[i][j];
+    if(ch>0){ out.push({i0:i, i1:i+ch, j0:j, j1:j+1}); i+=ch; j++ }
+    else if(ch<=-2){ out.push({i0:i, i1:i+1, j0:j, j1:j-ch}); i++; j-=ch }
+    else if(ch===-1) j++; else i++;
+  }
   return out;
+}
+// rough mora count of a Japanese line (kanji ~2, small kana / っ / ー ~0): used to share pronunciation/translation out
+function moraLen(x){
+  let n=0; for(const ch of normLy(x)){ n += /[㐀-鿿々]/.test(ch) ? 2 : /[ぁぃぅぇぉゃゅょゎっァィゥェォャュョヮッー]/.test(ch) ? 0 : 1 }
+  return Math.max(1,n);
+}
+// split text into weights.length parts at word gaps, as close as possible to the weight proportions
+function splitByWeights(text, weights){
+  const k=weights.length, t=String(text||'').trim();
+  if(!t) return weights.map(()=> '');
+  let units=t.split(/\s+/), sep=' ';
+  if(units.length<k){ units=[...t.replace(/\s+/g,'')]; sep='' }          // too few words: cut between characters
+  if(units.length<k) return [t, ...weights.slice(1).map(()=> '')];
+  const len=units.map(u=>u.length), total=len.reduce((a,b)=>a+b,0), W=weights.reduce((a,b)=>a+b,0);
+  const cum=[0]; len.forEach(v=>cum.push(cum[cum.length-1]+v));
+  const cuts=[]; let acc=0, prev=0;
+  for(let b=1;b<k;b++){
+    acc+=weights[b-1]; const target=total*acc/W;
+    let best=prev+1, bd=Infinity;
+    for(let c=prev+1;c<=units.length-(k-b);c++){ const d=Math.abs(cum[c]-target); if(d<bd){ bd=d; best=c } }
+    cuts.push(best); prev=best;
+  }
+  const parts=[]; let st=0; cuts.concat(units.length).forEach(c=>{ parts.push(units.slice(st,c).join(sep)); st=c });
+  return parts;
 }
 function pasteOnto(s, rows, overwrite){
   const lyr = s.lines.filter(l=>l.kind==='lyric');
   const groups = alignRows(rows, lyr);
-  let p=0, q=0, joined=0, joinedTo=0; const hit=new Set();
+  let p=0, q=0, joined=0, joinedTo=0, split=0, splitTo=0; const hit=new Set(), splitRows=[], used=new Set();
   const cat=(rs,f)=>rs.map(r=>r[f]).filter(Boolean).join(' ');
-  groups.forEach(({i0,i1,j})=>{
-    const rs=rows.slice(i0,i1), l=lyr[j];
+  const put=(l,pr,tr)=>{ if(pr && (overwrite || !l.pr)){ l.pr=pr; p++ } if(tr && (overwrite || !l.tr)){ l.tr=tr; q++ } };
+  groups.forEach(({i0,i1,j0,j1})=>{
     for(let i=i0;i<i1;i++) hit.add(i);
+    for(let j=j0;j<j1;j++) used.add(j);
+    const rs=rows.slice(i0,i1), ls=lyr.slice(j0,j1);
+    if(ls.length>1){
+      const w=ls.map(l=>moraLen(l.ly)), prs=splitByWeights(rs[0].pr,w), trs=splitByWeights(rs[0].tr,w);
+      ls.forEach((l,x)=>put(l,prs[x],trs[x]));
+      split++; splitTo+=ls.length; splitRows.push(rs[0].ly);
+      return;
+    }
     if(rs.length>1){ joined+=rs.length; joinedTo++ }
-    const pr=cat(rs,'pr'), tr=cat(rs,'tr');
-    if(pr && (overwrite || !l.pr)){ l.pr=pr; p++ }
-    if(tr && (overwrite || !l.tr)){ l.tr=tr; q++ }
+    put(ls[0], cat(rs,'pr'), cat(rs,'tr'));
   });
   const miss = rows.filter((r,i)=>!hit.has(i)).map(r=>r.ly);
-  const empty = lyr.filter((l,j)=>!groups.some(x=>x.j===j)).length;
-  return {matched:hit.size, total:rows.length, p, q, miss, empty, joined, joinedTo};
+  const empty = lyr.filter((l,j)=>!used.has(j)).length;
+  return {matched:hit.size, total:rows.length, p, q, miss, empty, joined, joinedTo, split, splitTo, splitRows};
 }
 function pasteMsg(res){
   let m = t('alignDone').replace('{m}',res.matched).replace('{n}',res.total).replace('{p}',res.p).replace('{r}',res.q);
   if(res.joined) m += ' '+t('alignJoin').replace('{k}',res.joined).replace('{g}',res.joinedTo);
+  if(res.split) m += ' '+t('alignSplit').replace('{k}',res.split).replace('{g}',res.splitTo)+' '+res.splitRows.slice(0,3).map(x=>'「'+(x.length>18?x.slice(0,18)+'…':x)+'」').join(' ');
   if(res.miss.length) m += ' '+t('alignMiss').replace('{k}',res.miss.length)+' '+res.miss.slice(0,3).map(x=>'「'+(x.length>18?x.slice(0,18)+'…':x)+'」').join(' ');
   return m;
 }
