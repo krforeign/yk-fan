@@ -1556,7 +1556,8 @@ button.sl-head{width:100%;background:none;border:0;border-bottom:1px solid var(-
 .vf-search{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 
 /* fan-page hero (after the tour): six letters instead of five */
-.hero-title.fan{font-size:min(17cqi,170px)}
+.hero-title.fan{font-family:"Shippori Mincho B1","Noto Serif JP",serif;font-weight:700;font-size:min(19cqi,180px);letter-spacing:.06em}
+.bubble.kanji{font-family:"Shippori Mincho B1","Noto Serif JP",serif;font-weight:700;letter-spacing:.12em}
 .info-grid.one{grid-template-columns:1fr}
 /* ticket guide */
 .ticket-steps{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
@@ -1566,3 +1567,7 @@ button.sl-head{width:100%;background:none;border:0;border-bottom:1px solid var(-
 .ticket-steps p{margin:0;font-size:13.5px;line-height:1.7;color:var(--muted)}
 .ticket-world{margin-top:16px}
 .ticket-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+/* general visitors: lyrics without the time column, player without the clock */
+.ln.nots{grid-template-columns:minmax(0,1fr)}
+.player.noclock .clock{display:none}

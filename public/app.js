@@ -400,7 +400,7 @@ function parseRoute(){
 function render(keep){
   document.documentElement.lang = S.lang;
   { const tt = tourMode() ? '米津玄師 GHOST Fan Page' : '米津玄師 Fan Page'; if(document.title!==tt) document.title=tt }
-  if(S.loading||S.loadErr){ root.innerHTML = `<div class="boot"><span class="bubble">${tourMode()?'GHOST':'YONEZU'}</span><p>${S.loadErr?t('loadErr'):t('loading')}</p></div>`; return }
+  if(S.loading||S.loadErr){ root.innerHTML = `<div class="boot"><span class="bubble ${tourMode()?'':'kanji'}">${tourMode()?'GHOST':'米津玄師'}</span><p>${S.loadErr?t('loadErr'):t('loading')}</p></div>`; return }
   const r=parseRoute();
   let song=null;
   if(r.view==='song'||r.view==='edit'){ song=songById(r.id); if(!song){ location.hash='chant'; return } }
@@ -484,7 +484,7 @@ function sideInner(r){
        <li><a href="#app" data-sec="app">${t('navApp')} <small>App</small></a></li>`;
   const home = !inCall && r.view!=='lives';
   return `<div class="side-top">
-      <a class="brand" href="#info"><span class="bubble">${tourMode()?'GHOST':'YONEZU'}</span><small>${S.lang==='ko'?'요네즈 켄시':'米津玄師'} · ${tourMode()?t('fanpage'):t('fanBrand')}</small></a>
+      <a class="brand" href="#info"><span class="bubble ${tourMode()?'':'kanji'}">${tourMode()?'GHOST':'米津玄師'}</span><small>${tourMode()?`${S.lang==='ko'?'요네즈 켄시':'米津玄師'} · ${t('fanpage')}`:`${S.lang==='ko'?'요네즈 켄시 · ':''}${t('fanBrand')}`}</small></a>
       <div class="seg tabs"><a href="#info" ${home?'aria-current="page"':''}>${t('tabMain')}</a><a href="#chant" ${inCall?'aria-current="page"':''}><span class="tl-l">${t('tabCall')}</span><span class="tl-s">${S.lang==='ko'?'콜':'コール'}</span></a><a href="#lives" ${r.view==='lives'?'aria-current="page"':''}>${t('tabLive')}</a></div>
       <div class="seg lang" role="group" aria-label="Language"><button type="button" data-act="lang" data-v="ja" aria-pressed="${S.lang==='ja'}">日本語</button><button type="button" data-act="lang" data-v="ko" aria-pressed="${S.lang==='ko'}">한국어</button></div>
     </div>
@@ -538,8 +538,8 @@ function homeView(){
   return `<div class="view">
     <section id="info">
       <div class="hero">
-        <div class="hero-lines" aria-hidden="true">${(TOUR?['KENSHI','YONEZU','2026','2027','WORLD','TOUR']:['KENSHI','YONEZU','SINCE','2009','FAN','PAGE']).map(x=>`<span>${x}</span>`).join('')}</div>
-        <h1 class="hero-title ${TOUR?'':'fan'}" aria-label="${TOUR?'KENSHI YONEZU 2026 TOUR / GHOST':'KENSHI YONEZU FAN PAGE'}">${(TOUR?'GHOST':'YONEZU').split('').map((c,i)=>`<span style="--i:${i}">${c}</span>`).join('')}</h1>
+        <div class="hero-lines" aria-hidden="true">${(TOUR?['KENSHI','YONEZU','2026','2027','WORLD','TOUR']:['SINCE','2009','FAN','PAGE']).map(x=>`<span>${x}</span>`).join('')}</div>
+        <h1 class="hero-title ${TOUR?'':'fan'}" aria-label="${TOUR?'KENSHI YONEZU 2026 TOUR / GHOST':'米津玄師 FAN PAGE'}" ${TOUR?'':'lang="ja"'}>${(TOUR?'GHOST':'米津玄師').split('').map((c,i)=>`<span style="--i:${i}">${c}</span>`).join('')}</h1>
         <p class="hero-ja">${TOUR?'米津玄師 2026 TOUR / GHOST':t('heroFanJa')}</p>
         <div class="hero-world">${TOUR?t('heroWorld'):t('heroFanSub')}</div>
         ${TOUR ? heroTourBits(nx) : lastTourCard()}
@@ -1127,7 +1127,7 @@ function songTop(s){
 }
 function songMedia(s){
   const vid=hasVid(s.yt) && !S.ytFailed;
-  return `<div class="player" id="player">
+  return `<div class="player ${S.owner?'':'noclock'}" id="player">
     ${vid?'':`<button type="button" class="pp" data-act="pp" aria-label="play/pause" id="pp"></button>`}
     <span class="clock" id="pclock">0:00.0</span>
     <a class="pl-back" href="#chant" aria-label="${esc(t('back'))}">←</a><b class="pl-title" lang="ja">${esc(s.title||'')}</b>
@@ -1159,17 +1159,18 @@ function songLyrics(s){
 }
 function viewLine(l,i){
   const memo = L(l.nj,l.nk);
-  const ts = l.t!=null?`<button type="button" class="ts" data-act="seek" data-v="${l.t}">${fmt(l.t)}</button>`:'<span></span>';
+  const ts = !S.owner ? '' : l.t!=null?`<button type="button" class="ts" data-act="seek" data-v="${l.t}">${fmt(l.t)}</button>`:'<span></span>';
+  const nts = S.owner ? '' : ' nots';
   if(l.kind==='cheer'){
     const head = !hasCallText(l) && !l.c;
     // a cheer line with no time of its own belongs to the line above: shown and lit together with it
     const follow = l.t==null && i>0 && !l.label && !l.labelKo;
-    return `<li class="ln cheer ${head?'head':''} ${follow?'follow':''}" data-i="${i}" ${l.t!=null?`data-t="${l.t}"`:''}>${ts}<div class="body">
+    return `<li class="ln cheer${nts} ${head?'head':''} ${follow?'follow':''}" data-i="${i}" ${l.t!=null?`data-t="${l.t}"`:''}>${ts}<div class="body">
       ${labelOf(l)?`<span class="secl">${esc(labelOf(l))}</span>`:''}
       ${callRow(l)}
       ${memo?`<p class="memo">${esc(memo)}</p>`:''}</div></li>`;
   }
-  return `<li class="ln" data-i="${i}" ${l.t!=null?`data-t="${l.t}" tabindex="0"`:''}>${ts}<div class="body">
+  return `<li class="ln${nts}" data-i="${i}" ${l.t!=null?`data-t="${l.t}" tabindex="0"`:''}>${ts}<div class="body">
     <p class="ly">${markedHtml(l.ly,l.marks)}</p>
     ${S.lang==='ko'&&l.pr?`<p class="sub">${esc(l.pr)}</p>`:''}
     ${S.lang==='ko'&&l.tr?`<p class="sub tr">${esc(l.tr)}</p>`:''}
