@@ -34,6 +34,29 @@ const GHOST_DATES = [
   {d:'2027-02-28', st:'20:00', tz:'+01:00', city:'アムステルダム', cityKo:'암스테르담', v:'Ziggo Dome', world:true}
 ];
 const showStart = g=>new Date(g.d+'T'+(g.st||'00:00')+':00'+g.tz);
+// Site mode. 'auto': tour page until 2 days after the last GHOST show, then a general fan page.
+// Set 'tour' or 'fan' to force one. Preview either with ?mode=fan / ?mode=tour in the address.
+const SITE_MODE = 'auto';
+// How tickets for Kenshi Yonezu's shows in Japan are usually sold (general guide, no dates).
+const TICKET_LINKS = [['https://ticket.kenshiyonezu.jp/','ticketSite'],['https://faq.ticket.kenshiyonezu.jp/hc/ja','ticketFaq'],['https://reissuerecords.net/','officialSite']];
+const TICKET_GUIDE = {
+  ja:[
+    ['公式チケットサイトに会員登録','日本公演のチケットは、基本的に公式チケットサイトで受け付けます。入場時に身分証で本人確認があるので、身分証と同じ本名で登録しておきます。一緒に行く人も「同行者」として事前の登録が必要です。'],
+    ['最速はCD封入シリアル先行','ツアーが発表されると、新しいシングルなどの初回盤に封入されたシリアルナンバーで申し込む先行抽選が最初に行われることが多く、その後も別のCDのシリアル先行が続くことがあります。'],
+    ['一般発売も抽選のことが多い','GHOST ツアーでは一般発売も抽選でした。受付期間中ならいつ申し込んでも当選確率は変わらないので、慌てなくて大丈夫。当選したら期限内に入金します。'],
+    ['チケットはスマホの QR コード','公演の約1週間前から、マイページにデジタルチケット (QRコード) が表示されます。申込者・同行者それぞれに自分のスマホが必要で、スクリーンショットや印刷では入場できません。'],
+    ['当日は身分証の原本を','席種に関係なく、入場する全員が公的身分証明書の原本で本人確認を受けます。申込者・同行者は後から変更できません。'],
+    ['行けなくなったら公式リセール','公式リセールは抽選で自動的にマッチングされる仕組みで、相手を指定した譲渡はできず、成立すると手数料がかかります。本人確認があるので、非公式の転売チケットでは入場できません。']
+  ],
+  ko:[
+    ['공식 티켓 사이트에 회원 가입','일본 공연 티켓은 기본적으로 공식 티켓 사이트에서 접수해요. 입장할 때 신분증으로 본인 확인을 하니까 신분증과 같은 본명으로 가입해 두세요. 같이 갈 사람도 ‘동행자’로 미리 등록해야 해요.'],
+    ['가장 빠른 건 CD 동봉 시리얼 선행','투어가 발표되면 새 싱글 등의 초회판에 들어 있는 시리얼 번호로 신청하는 선행 추첨이 가장 먼저 열리는 경우가 많고, 그 뒤로 다른 CD의 시리얼 선행이 이어지기도 해요.'],
+    ['일반 판매도 추첨인 경우가 많아요','GHOST 투어는 일반 판매도 추첨이었어요. 접수 기간 안이라면 언제 신청해도 당첨 확률은 같으니 서두르지 않아도 돼요. 당첨되면 기한 안에 입금해요.'],
+    ['티켓은 스마트폰 QR 코드','공연 약 1주일 전부터 마이페이지에 디지털 티켓(QR 코드)이 표시돼요. 신청자와 동행자 모두 각자 스마트폰이 있어야 하고, 스크린샷이나 인쇄로는 입장할 수 없어요.'],
+    ['당일엔 신분증 원본','좌석 종류와 상관없이 입장하는 모든 사람이 공적 신분증 원본으로 본인 확인을 받아요. 신청자와 동행자는 나중에 바꿀 수 없어요.'],
+    ['못 가게 되면 공식 리세일','공식 리세일은 추첨으로 자동 매칭되는 방식이라 상대를 지정해서 양도할 수 없고, 성사되면 수수료가 들어요. 본인 확인이 있어서 비공식 전매 티켓으로는 입장할 수 없어요.']
+  ]
+};
 // debut days: Hachi's first original upload, and the first album under his own name
 const DEBUTS = [
   {id:'hachi', d:'2009-05-20', ja:'ボカロP デビューから', ko:'보카로P 데뷔', sj:'ハチ「お姫様は電子音で眠る」', sk:'하치 「お姫様は電子音で眠る」'},
@@ -46,7 +69,7 @@ const T = {
     navInfo:'公演情報', navMembers:'プロフィール', navHistory:'ヒストリー', navSetlist:'セットリスト',
     navCallTop:'曲一覧', navWatch:'見どころ', navManner:'マナー', toBudo:'次の公演まで',
     countNote:'次の公演の開演 (現地時間) までのカウントダウン', countLive:'いま公演中!', countDone:'GHOST、ありがとう。',
-    outline:'Outline', schedule:'Ticket Schedule', ep:'公式チケットサイト ↗',
+    outline:'Outline', schedule:'Ticket Schedule', ep:'公式チケットサイト ↗', navTickets:'チケット', ticketLabel:'日本公演のチケットの取り方', ticketLead:'販売日程は国や公演ごとに違うので、ここでは日本公演でよくある流れだけをまとめています。日程や条件は必ず公式の案内で確認してください。', ticketWorld:'海外公演 (WORLD TOUR など) は、その国のプロモーターが販売します。各国の公式案内を確認してください。日本公演に海外から申し込む場合も、登録や支払いの条件を公式 FAQ で事前に確認しておくと安心です。', ticketSite:'公式チケットサイト ↗', ticketFaq:'チケット FAQ ↗', officialSite:'公式サイト ↗', fanBrand:'Fan Page', heroFanJa:'米津玄師 非公式ファンページ', heroFanSub:'コールガイド · ライブ記録 · セトリ統計', lastTour:'最新ツアー', lastTourN:'全{n}公演', toLives:'公演記録へ →',
     resale:'チケットの受付はすべて終了しています。最新情報は公式サイト・公式チケットサイトで確認してください。',
     stLive:'受付中', stDone:'終了', stSoon:'予定',
     membersLabel:'プロフィール', historyLabel:'ヒストリー 2009 — 2027', setlistLabel:'最近のセットリスト', infoLabel:'公演情報',
@@ -61,7 +84,7 @@ const T = {
     acts:{cr:'コール&レスポンス', shout:'みんなで叫ぶ', clap:'クラップ', jump:'ジャンプ', sing:'一緒に歌う', watch:'見どころ (コールなし)'},
     lyricsReady:'同期歌詞あり', lyricsNone:'コールのみ', lines:'行',
     watchH:'見逃し厳禁', mannerH:'アリーナ公演のマナー',
-    back:'← 曲一覧', ytOpen:'YouTube で見る', ytSub:'公式動画を新しいタブで開きます', ytSearch:'YouTube で探す', ytSearchSub:'動画リンクは準備中です',
+    back:'← 曲一覧', ytOpen:'YouTube で見る', ytSub:'公式動画を新しいタブで開きます', ytSearch:'YouTube で探す', nicoSearch:'ニコニコで探す', ytSearchSub:'動画リンクは準備中です',
     playerHint:'YouTubeの再生と同時に ▶ を押すと歌詞が流れます。時刻をタップするとその位置へ。',
     autoScroll:'自動スクロール', autoScrollS:'自動', noLines:'まだ歌詞・コールが登録されていません。', ytAt:'この位置からYouTubeで再生',
     credit:'クレジット', level:'コール難易度', source:'出典',
@@ -71,7 +94,7 @@ const T = {
     publishing:'公開中…', published:'公開しました。ページを再読み込みします。',
     errWriter:'この画面からは保存できません (編集権限がありません)。', errConflict:'別の版が先に公開されました。最新版を読み込みます。', errRate:'保存が続いています。少し待ってからもう一度。', errOther:'保存できませんでした: ',
     restore:'前回の未公開の編集が残っています。', restoreYes:'復元する', restoreNo:'捨てる',
-    fBasic:'曲の情報', fTitle:'曲名 (日本語)', fKo:'韓国語の読み', fCredit:'作詞・作曲', fAlbum:'収録', fYt:'YouTube URL', fLevel:'難易度 (1〜3)', fNoteJa:'ひとこと (日本語)', fNoteKo:'ひとこと (韓国語)', fSrc:'出典',
+    fBasic:'曲の情報', fTitle:'曲名 (日本語)', fKo:'韓国語の読み', fCredit:'作詞・作曲', fAlbum:'収録', fYt:'動画 URL (YouTube / ニコニコ)', fLevel:'難易度 (1〜3)', fNoteJa:'ひとこと (日本語)', fNoteKo:'ひとこと (韓国語)', fSrc:'出典',
     fLines:'歌詞 & コール', fLinesP:'1行ずつ: 時刻 / 歌詞 / コール / 種類。「詳細」にセクション名・韓国語の読み・メモ。時刻は 1:23.4 形式。',
     fBulk:'歌詞をまとめて貼り付け (1行 = 1行)', fBulkBtn:'下に追加', addLine:'+ 行を追加',
     lTime:'時刻', lLy:'歌詞', lCall:'コール・動作', lSec:'セクション (サビ等)', lSub:'韓国語の読み/訳', lMj:'メモ (日本語)', lMk:'メモ (韓国語)', lMore:'詳細', actNone:'— 種類なし —',
@@ -104,7 +127,7 @@ const T = {
     navInfo:'공연 정보', navMembers:'프로필', navHistory:'연혁', navSetlist:'셋리스트',
     navCallTop:'곡 목록', navWatch:'감상 포인트', navManner:'매너', toBudo:'다음 공연까지',
     countNote:'다음 공연 개연 (현지 시간)까지 남은 시간', countLive:'지금 공연 중!', countDone:'GHOST, 고마웠어요.',
-    outline:'Outline', schedule:'Ticket Schedule', ep:'공식 티켓 사이트 ↗',
+    outline:'Outline', schedule:'Ticket Schedule', ep:'공식 티켓 사이트 ↗', navTickets:'티켓', ticketLabel:'일본 공연 티켓 구하는 법', ticketLead:'판매 일정은 나라와 공연마다 달라서, 여기서는 일본 공연에서 흔한 흐름만 정리했어요. 일정과 조건은 꼭 공식 안내에서 확인해 주세요.', ticketWorld:'해외 공연(WORLD TOUR 등)은 그 나라의 프로모터가 판매해요. 각 나라의 공식 안내를 확인해 주세요. 해외에서 일본 공연에 신청할 때도 가입·결제 조건을 공식 FAQ에서 미리 확인해 두면 안심이에요.', ticketSite:'공식 티켓 사이트 ↗', ticketFaq:'티켓 FAQ ↗', officialSite:'공식 사이트 ↗', fanBrand:'Fan Page', heroFanJa:'요네즈 켄시 비공식 팬페이지', heroFanSub:'콜 가이드 · 공연 기록 · 셋리 통계', lastTour:'최근 투어', lastTourN:'전 {n}공연', toLives:'공연 기록 보기 →',
     resale:'티켓 접수는 모두 끝났어요. 최신 정보는 공식 사이트·공식 티켓 사이트에서 확인해 주세요.',
     stLive:'접수 중', stDone:'종료', stSoon:'예정',
     membersLabel:'프로필', historyLabel:'연혁 2009 — 2027', setlistLabel:'최근 셋리스트', infoLabel:'공연 정보',
@@ -119,7 +142,7 @@ const T = {
     acts:{cr:'콜 앤 리스폰스', shout:'다 같이 외치기', clap:'클랩', jump:'점프', sing:'따라 부르기', watch:'감상 포인트 (콜 없음)'},
     lyricsReady:'싱크 가사 있음', lyricsNone:'콜만 있음', lines:'줄',
     watchH:'놓치지 말 것', mannerH:'아레나 공연 매너',
-    back:'← 곡 목록', ytOpen:'YouTube에서 보기', ytSub:'공식 영상을 새 탭으로 열어요', ytSearch:'YouTube에서 찾기', ytSearchSub:'영상 링크 준비 중이에요',
+    back:'← 곡 목록', ytOpen:'YouTube에서 보기', ytSub:'공식 영상을 새 탭으로 열어요', ytSearch:'YouTube에서 찾기', nicoSearch:'니코니코에서 찾기', ytSearchSub:'영상 링크 준비 중이에요',
     playerHint:'YouTube 재생과 동시에 ▶를 누르면 가사가 흘러가요. 시간을 누르면 그 위치로 이동.',
     autoScroll:'자동 스크롤', autoScrollS:'자동', noLines:'아직 가사·콜이 등록되지 않았어요.', ytAt:'이 위치부터 YouTube에서 재생',
     credit:'크레딧', level:'콜 난이도', source:'출처',
@@ -128,7 +151,7 @@ const T = {
     publishing:'공개하는 중…', published:'공개했어요. 페이지를 다시 불러옵니다.',
     errWriter:'이 화면에서는 저장할 수 없어요 (편집 권한 없음).', errConflict:'다른 버전이 먼저 공개됐어요. 최신 버전을 불러옵니다.', errRate:'저장이 너무 잦아요. 잠시 후 다시 시도하세요.', errOther:'저장하지 못했어요: ',
     restore:'지난번에 공개하지 않은 편집이 남아 있어요.', restoreYes:'복원하기', restoreNo:'버리기',
-    fBasic:'곡 정보', fTitle:'곡 제목 (일본어)', fKo:'한국어 읽기', fCredit:'작사·작곡', fAlbum:'수록', fYt:'YouTube URL', fLevel:'난이도 (1~3)', fNoteJa:'한마디 (일본어)', fNoteKo:'한마디 (한국어)', fSrc:'출처',
+    fBasic:'곡 정보', fTitle:'곡 제목 (일본어)', fKo:'한국어 읽기', fCredit:'작사·작곡', fAlbum:'수록', fYt:'영상 URL (YouTube / 니코니코)', fLevel:'난이도 (1~3)', fNoteJa:'한마디 (일본어)', fNoteKo:'한마디 (한국어)', fSrc:'출처',
     fLines:'가사 & 콜', fLinesP:'한 줄씩: 시간 / 가사 / 콜 / 종류. \'상세\'에 구간 이름·한국어 발음·메모. 시간은 1:23.4 형식.',
     fBulk:'가사 한꺼번에 붙여넣기 (한 줄 = 한 줄)', fBulkBtn:'아래에 추가', addLine:'+ 줄 추가',
     lTime:'시간', lLy:'가사', lCall:'콜·동작', lSec:'구간 (후렴 등)', lSub:'한국어 발음/번역', lMj:'메모 (일본어)', lMk:'메모 (한국어)', lMore:'상세', actNone:'— 종류 없음 —',

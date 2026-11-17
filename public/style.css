@@ -1551,3 +1551,18 @@ button.sl-head{width:100%;background:none;border:0;border-bottom:1px solid var(-
   html.song-playing .song-mode .song-lives button.sl-head{padding:6px 12px}
   html.song-playing #req-fab{display:none}
 }
+
+/* empty video box: YouTube + niconico search links side by side */
+.vf-search{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+
+/* fan-page hero (after the tour): six letters instead of five */
+.hero-title.fan{font-size:min(17cqi,170px)}
+.info-grid.one{grid-template-columns:1fr}
+/* ticket guide */
+.ticket-steps{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.ticket-steps li{display:flex;gap:14px;padding:16px 18px;border:1px solid var(--rule);border-radius:var(--r,14px);background:color-mix(in srgb, var(--panel, #10131f) 70%, transparent)}
+.ticket-steps .no{flex:none;font-family:var(--f-disp);font-size:22px;line-height:1;color:var(--lav)}
+.ticket-steps h4{margin:0 0 6px;font-size:15px}
+.ticket-steps p{margin:0;font-size:13.5px;line-height:1.7;color:var(--muted)}
+.ticket-world{margin-top:16px}
+.ticket-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

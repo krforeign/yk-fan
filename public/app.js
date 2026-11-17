@@ -30,7 +30,7 @@ Object.assign(T.ja, {
   pickCheer:'呼応を選択', erase:'消しゴム', customCheer:'オリジナル呼応を追加', ccName:'名前 (日本語)', ccNameKo:'名前 (韓国語)', ccColor:'色', ccIcon:'アイコン', ccAdd:'追加',
   addCheerLine:'呼応だけの行', fLabel:'区間名 (前奏・間奏など)', fCall:'コール内容 (例: オイ!)', memo:'メモ',
   curTime:'現在の時間', backGuide:'曲ページへ', edit:'編集', legendSong:'この曲の呼応',
-  noVideo:'動画はまだ登録されていません', noVideoOwner:'編集画面で YouTube URL を入れると、ここに動画が表示されます。', ytApply:'適用',
+  noVideo:'動画はまだ登録されていません', noVideoOwner:'編集画面で YouTube かニコニコ動画の URL を入れると、ここに動画が表示されます。', ytApply:'適用',
   timerNote:'動画がないため、タイマーで時間が進みます。', loading:'読み込み中…', loadErr:'データを読み込めませんでした。再読み込みしてください。',
   admin:'管理', adminH:'管理者ログイン', adminP:'管理者パスワードを入力すると、この端末でコールガイドを編集できます (30日間有効)。', password:'パスワード', login:'ログイン', logout:'ログアウト',
   loginErr:'パスワードが違います。', loginRate:'試行回数が多すぎます。15分ほど待ってからもう一度お試しください。', loginNoPw:'ADMIN_PASSWORD が設定されていません。Cloudflare の Settings → Variables and Secrets に「Secret」として追加し、もう一度デプロイしてください。', loggedIn:'ログイン中です。曲ページの「編集」から編集できます。',
@@ -97,7 +97,7 @@ Object.assign(T.ko, {
   pickCheer:'호응 선택', erase:'지우개', customCheer:'커스텀 호응 추가', ccName:'이름 (일본어)', ccNameKo:'이름 (한국어)', ccColor:'색', ccIcon:'아이콘', ccAdd:'추가',
   addCheerLine:'호응 전용 줄', fLabel:'구간 이름 (전주·간주 등)', fCall:'콜 내용 (예: オイ!)', memo:'메모',
   curTime:'현재 시간', backGuide:'곡 페이지로', edit:'편집', legendSong:'이 곡의 호응',
-  noVideo:'아직 영상이 등록되지 않았어요', noVideoOwner:'편집 화면에서 YouTube URL을 넣으면 여기에 영상이 표시돼요.', ytApply:'적용',
+  noVideo:'아직 영상이 등록되지 않았어요', noVideoOwner:'편집 화면에서 YouTube나 니코니코 동화 URL을 넣으면 여기에 영상이 표시돼요.', ytApply:'적용',
   timerNote:'영상이 없어서 타이머로 시간이 흘러가요.', loading:'불러오는 중…', loadErr:'데이터를 불러오지 못했어요. 새로고침해 주세요.',
   admin:'관리', adminH:'관리자 로그인', adminP:'관리자 비밀번호를 입력하면 이 기기에서 콜 가이드를 편집할 수 있어요 (30일 유지).', password:'비밀번호', login:'로그인', logout:'로그아웃',
   loginErr:'비밀번호가 틀렸어요.', loginRate:'시도 횟수가 너무 많아요. 15분쯤 뒤에 다시 시도해 주세요.', loginNoPw:'ADMIN_PASSWORD가 설정되지 않았어요. Cloudflare의 Settings → Variables and Secrets에 ‘Secret’ 유형으로 추가하고 다시 배포해 주세요.', loggedIn:'로그인되어 있어요. 곡 페이지의 \'편집\'에서 편집할 수 있어요.',
@@ -281,7 +281,11 @@ const clock = {
   reset(){ this.running=false; this.base=0 }
 };
 function fmt(s){ if(s==null||isNaN(s)) return ''; s=Math.max(0,s); const m=Math.floor(s/60); const r=s-m*60; return m+':'+(r<10?'0':'')+r.toFixed(1) }
-function ytId(u){ u=String(u||'').trim(); if(/^[\w-]{11}$/.test(u)) return u; const m=u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/); return m?m[1]:null }
+function ytId(u){ u=String(u||'').trim(); if(nicoId(u)) return null; if(/^[\w-]{11}$/.test(u)) return u; const m=u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/); return m?m[1]:null }
+// niconico: sm / so / nm + digits, from a watch URL, a nico.ms short link, an embed URL or the bare ID
+function nicoId(u){ const m=String(u||'').trim().match(/(?:^|nicovideo\.jp\/watch\/|nico\.ms\/)((?:sm|so|nm)\d+)/); return m?m[1]:null }
+const hasVid = u => !!(ytId(u) || nicoId(u));
+function nicoSearch(song){ return 'https://www.nicovideo.jp/search/'+encodeURIComponent((song.title||'').replace(/\s*[(（]?\s*[+＋].*$/,'')) }
 function ytSearch(song){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent('米津玄師 '+(song.title||'').replace(/\s*[(（]?\s*[+＋].*$/,'')) }
 
 let ytLoading=null;
@@ -297,8 +301,56 @@ function loadYT(){
   return ytLoading;
 }
 function destroyPlayer(){ if(S.player){ try{ S.player.destroy() }catch(e){} } S.player=null; S.playerReady=false }
+/* niconico embed player, driven through its (unofficial) postMessage API and wrapped to look like the YouTube player,
+   so the clock, sync, seeking and the editor work unchanged. "Playing" is read from the time moving forward. */
+const NICO='https://embed.nicovideo.jp';
+let nicoSeq=0;
+function mountNico(el, id, song){
+  const pid='yz'+(++nicoSeq), f=document.createElement('iframe');
+  f.src=`${NICO}/watch/${id}?jsapi=1&playerId=${pid}`;
+  f.allow='autoplay; fullscreen; encrypted-media'; f.setAttribute('allowfullscreen',''); f.title='niconico';
+  f.style.cssText='width:100%;height:100%;border:0;display:block';
+  el.replaceWith(f); f.id='ytplayer';
+  const st={t:0, len:0, unit:0, lastT:-1, movedAt:0};
+  const post=(eventName,data)=>{ try{ f.contentWindow.postMessage(Object.assign({eventName, sourceConnectorType:1, playerId:pid}, data?{data}:{}), NICO) }catch(e){} };
+  const me={
+    nico:true,
+    getCurrentTime(){ return st.t },
+    getPlayerState(){ return performance.now()-st.movedAt < 800 ? 1 : 2 },
+    getPlaybackRate(){ return 1 },
+    playVideo(){ post('play') },
+    pauseVideo(){ post('pause') },
+    seekTo(t){ post('seek', {time: st.unit===1 ? t : Math.round(t*1000)}); st.t=t; st.lastT=t },
+    destroy(){ window.removeEventListener('message', on) }
+  };
+  const fail=()=>{
+    if(S.player!==me) return;
+    me.destroy(); S.player=null; S.playerReady=false; S.ytFailed=true;
+    const box=f.parentNode; if(box){ box.classList.add('empty'); f.outerHTML=`<div>${ico('smart_display')}<a class="btn ghost sm" href="https://www.nicovideo.jp/watch/${id}" target="_blank" rel="noopener">niconico ↗</a></div>` }
+    setHTML('pane-media', parseRoute().view==='edit'?edMedia(song):songMedia(song)); updatePlayer(true);
+  };
+  function on(e){
+    if(e.origin!==NICO || !e.data || e.data.playerId!==pid) return;
+    const d=e.data.data||{};
+    if(e.data.eventName==='loadComplete'){
+      st.len=+(d.videoInfo&&d.videoInfo.lengthInSeconds)||0;
+      if(S.player===me){ S.playerReady=true; updatePlayer(true) }
+    } else if(e.data.eventName==='playerMetadataChange'){
+      const ct=+d.currentTime||0, du=+d.duration||0;
+      if(!st.unit && du>0) st.unit = st.len ? (du > st.len*10 ? 1000 : 1) : (du > 20000 ? 1000 : 1);  // ms or seconds
+      const t=ct/(st.unit||1000);
+      if(st.lastT>=0 && t>st.lastT && t-st.lastT<3) st.movedAt=performance.now();
+      st.lastT=t; st.t=t;
+      if(S.player===me && !S.playerReady){ S.playerReady=true; updatePlayer(true) }
+    } else if(e.data.eventName==='error'){ fail() }
+  }
+  window.addEventListener('message', on);
+  S.player=me; S.playerReady=false;
+}
 async function mountPlayer(song){
-  const el=document.getElementById('ytplayer'); const vid=ytId(song.yt);
+  const el0=document.getElementById('ytplayer'); const nid=nicoId(song.yt);
+  if(el0 && nid) return mountNico(el0, nid, song);
+  const el=el0; const vid=ytId(song.yt);
   if(!el || !vid) return;
   const YT = await loadYT();
   if(!document.body.contains(el)) return;
@@ -322,7 +374,7 @@ const media = {
       // YouTube only updates its time every ~0.1-0.25s: fill the gaps ourselves while playing
       const v=S.player.getCurrentTime()||0, pn=performance.now(), pl=S.player.getPlayerState()===1;
       if(v!==ytT.v || !pl){ ytT.v=v; ytT.at=pn; return v }
-      return v + Math.min(0.5, (pn-ytT.at)/1000*(S.player.getPlaybackRate?S.player.getPlaybackRate()||1:1));
+      return v + Math.min(S.player.nico?1.5:0.5, (pn-ytT.at)/1000*(S.player.getPlaybackRate?S.player.getPlaybackRate()||1:1));
     }catch(e){} }
     return clock.now();
   },
@@ -342,18 +394,19 @@ function parseRoute(){
   if(h==='request') return {view:'request'};
   if(h==='lives'||h==='receipt'||/^y-\d{4}$/.test(h)) return {view:'lives', anchor:h};
   if(h==='stats'||h.startsWith('st-')){ S.liveMode='stats'; try{ history.replaceState(null,'','#lives') }catch(e){} return {view:'lives', anchor:'lives'} }
-  if(h==='chant'||h==='watch'||h==='manner'||h.startsWith('disc-')) return {view:'chant', anchor:h};
-  return {view:'home', anchor:['info','dates','members','history','app'].includes(h)?h:'info'};
+  if(h==='chant'||h==='watch'||h==='manner'||h.startsWith('disc-')) return {view:'chant', anchor:h==='watch'?'chant':h};
+  return {view:'home', anchor:['info','dates','tickets','members','history','app'].includes(h)?h:'info'};
 }
 function render(keep){
   document.documentElement.lang = S.lang;
-  if(S.loading||S.loadErr){ root.innerHTML = `<div class="boot"><span class="bubble">GHOST</span><p>${S.loadErr?t('loadErr'):t('loading')}</p></div>`; return }
+  { const tt = tourMode() ? '米津玄師 GHOST Fan Page' : '米津玄師 Fan Page'; if(document.title!==tt) document.title=tt }
+  if(S.loading||S.loadErr){ root.innerHTML = `<div class="boot"><span class="bubble">${tourMode()?'GHOST':'YONEZU'}</span><p>${S.loadErr?t('loadErr'):t('loading')}</p></div>`; return }
   const r=parseRoute();
   let song=null;
   if(r.view==='song'||r.view==='edit'){ song=songById(r.id); if(!song){ location.hash='chant'; return } }
   const editing = r.view==='edit' && S.owner;
   if(editing) song = curSong();
-  const key = [r.view, r.id||'', song?ytId(song.yt)||'':'', editing?'e':''].join('|');
+  const key = [r.view, r.id||'', song?(ytId(song.yt)||nicoId(song.yt)||''):'', editing?'e':''].join('|');
   const y = window.scrollY; let rebuilt = false;
   if(key!==S.renderedKey || !document.getElementById('pane')){
     destroyPlayer();
@@ -387,11 +440,11 @@ function render(keep){
   if(editing && S.reqMsg && S.step===4 && !document.getElementById('rq-applied')){ const p=document.querySelector('.ed-panel h3'); if(p) p.insertAdjacentHTML('afterend', `<p class="okmsg" id="rq-applied">${esc(S.reqMsg)}</p>`) }
 }
 const YT_TYPES=[['','ytNone'],['mv','ytMV'],['live','ytLive'],['audio','ytAudio'],['other','ytOther']];
-const ytBadge = s=>s.ytType && ytId(s.yt) ? `<span class="yt-badge yt-${s.ytType}">${esc(t(YT_TYPES.find(x=>x[0]===s.ytType)[1]))}</span>` : '';
+const ytBadge = s=>s.ytType && hasVid(s.yt) ? `<span class="yt-badge yt-${s.ytType}">${esc(t(YT_TYPES.find(x=>x[0]===s.ytType)[1]))}</span>` : '';
 function videoBox(song){
-  const vid=ytId(song.yt);
+  const vid=hasVid(song.yt);
   if(vid) return `<div class="video-frame">${ytBadge(song)}<div id="ytplayer"></div><button type="button" class="vf-expand" data-act="miniVid" aria-label="${t('miniOff')}">${ico('arrow_upward')}</button></div>`;
-  return `<div class="video-frame empty"><div>${ico('smart_display')}<b>${t('noVideo')}</b>${S.owner?`<small>${t('noVideoOwner')}</small>`:''}<a class="btn ghost sm" href="${esc(ytSearch(song))}" target="_blank" rel="noopener">${t('ytSearch')} ↗</a></div></div>`;
+  return `<div class="video-frame empty"><div>${ico('smart_display')}<b>${t('noVideo')}</b>${S.owner?`<small>${t('noVideoOwner')}</small>`:''}<span class="vf-search"><a class="btn ghost sm" href="${esc(ytSearch(song))}" target="_blank" rel="noopener">${t('ytSearch')} ↗</a><a class="btn ghost sm" href="${esc(nicoSearch(song))}" target="_blank" rel="noopener">${t('nicoSearch')} ↗</a></span></div></div>`;
 }
 function frame(song, editing){
   if(!song) return `<div class="cbar" id="cbar" aria-hidden="true"><b id="cbar-t"></b><small id="cbar-s"></small></div><div id="pane"></div>`;
@@ -422,20 +475,21 @@ function sideInner(r){
     : inCall
     ? `<li><a href="#chant" data-sec="chant">${t('navCallTop')} <small>Songs</small></a></li>` +
       DISCS.filter(d=>S.chantSort==='album' && songs.some(s=>(s.disc||'other')===d.id)).map(d=>`<li><a href="#disc-${d.id}" data-sec="disc-${d.id}" class="ja">${esc(discName(d))}</a></li>`).join('') +
-      `<li><a href="#watch" data-sec="watch">${t('navWatch')} <small>Watch</small></a></li><li><a href="#manner" data-sec="manner">${t('navManner')} <small>Manner</small></a></li>`
-    : `<li><a href="#info" data-sec="info">${t('navInfo')} <small>Info</small></a></li>
-       <li><a href="#dates" data-sec="dates">${t('datesH')} <small>Dates</small></a></li>
+      `<li><a href="#manner" data-sec="manner">${t('navManner')} <small>Manner</small></a></li>`
+    : `<li><a href="#info" data-sec="info">${tourMode()?t('navInfo'):t('tabMain')} <small>${tourMode()?'Info':'Top'}</small></a></li>
+       ${tourMode()?`<li><a href="#dates" data-sec="dates">${t('datesH')} <small>Dates</small></a></li>`:''}
+       <li><a href="#tickets" data-sec="tickets">${t('navTickets')} <small>Tickets</small></a></li>
        <li><a href="#members" data-sec="members">${t('navMembers')} <small>Profile</small></a></li>
        <li><a href="#history" data-sec="history">${t('navHistory')} <small>History</small></a></li>
        <li><a href="#app" data-sec="app">${t('navApp')} <small>App</small></a></li>`;
   const home = !inCall && r.view!=='lives';
   return `<div class="side-top">
-      <a class="brand" href="#info"><span class="bubble">GHOST</span><small>${S.lang==='ko'?'요네즈 켄시':'米津玄師'} · ${t('fanpage')}</small></a>
+      <a class="brand" href="#info"><span class="bubble">${tourMode()?'GHOST':'YONEZU'}</span><small>${S.lang==='ko'?'요네즈 켄시':'米津玄師'} · ${tourMode()?t('fanpage'):t('fanBrand')}</small></a>
       <div class="seg tabs"><a href="#info" ${home?'aria-current="page"':''}>${t('tabMain')}</a><a href="#chant" ${inCall?'aria-current="page"':''}><span class="tl-l">${t('tabCall')}</span><span class="tl-s">${S.lang==='ko'?'콜':'コール'}</span></a><a href="#lives" ${r.view==='lives'?'aria-current="page"':''}>${t('tabLive')}</a></div>
       <div class="seg lang" role="group" aria-label="Language"><button type="button" data-act="lang" data-v="ja" aria-pressed="${S.lang==='ja'}">日本語</button><button type="button" data-act="lang" data-v="ko" aria-pressed="${S.lang==='ko'}">한국어</button></div>
     </div>
     <ul class="nav">${nav}</ul>
-    <div class="dday"><small>${t('toBudo')}</small><b id="side-d">${ddayText()}</b></div>
+    ${tourMode()?`<div class="dday"><small>${t('toBudo')}</small><b id="side-d">${ddayText()}</b></div>`:''}
     ${DEBUTS.map(x=>`<div class="dday debut"><small>${esc(L(x.ja,x.ko))}</small><b id="side-debut-${x.id}">${debutDays(x.d)}${t('debutUnit')}</b></div>`).join('')}
     ${S.owner?`<button type="button" class="btn ${S.editMode?'':'ghost'} sm" data-act="editmode">${S.editMode?t('ownerOff'):'✎ '+t('ownerOn')}</button>`:''}`;
 }
@@ -456,7 +510,7 @@ function refreshBar(){ setHTML('obar', ownerBar()) }
 
 /* ================= home ================= */
 function homeView(){
-  const now = new Date();
+  const now = new Date(), TOUR = tourMode();
   const info = INFO[S.lang].map(([a,b,c])=>`<dt>${esc(a)}</dt><dd>${esc(b)}<small>${esc(c)}</small></dd>`).join('');
   const sched = SCHED.map(x=>{
     let st='stSoon',cls='';
@@ -484,31 +538,24 @@ function homeView(){
   return `<div class="view">
     <section id="info">
       <div class="hero">
-        <div class="hero-lines" aria-hidden="true"><span>KENSHI</span><span>YONEZU</span><span>2026</span><span>2027</span><span>WORLD</span><span>TOUR</span></div>
-        <h1 class="hero-title" aria-label="KENSHI YONEZU 2026 TOUR / GHOST">${'GHOST'.split('').map((c,i)=>`<span style="--i:${i}">${c}</span>`).join('')}</h1>
-        <p class="hero-ja">米津玄師 2026 TOUR / GHOST</p>
-        <div class="hero-world">${t('heroWorld')}</div>
-        ${nx?`<div class="hero-next"><small>${t('nextShow')}</small><b>${fmtD(nx.d)} <span>${dow(nx.d)}</span></b><span>${esc(L(nx.city,nx.cityKo))} · ${esc(nx.v)}</span><span class="mono">${nx.st?`${nx.op?t('open')+' '+nx.op+' / ':''}${t('start')} ${nx.st}`:t('timeTbd')}</span></div>`:`<div class="hero-next"><b>${t('allDone')}</b></div>`}
-        <div class="count"><div><b id="c-d">--</b><span>DAYS</span></div><div><b id="c-h">--</b><span>HRS</span></div><div><b id="c-m">--</b><span>MIN</span></div><div><b id="c-s">--</b><span>SEC</span></div></div>
-        <div class="hero-dday" id="hero-d">${ddayText()}</div>
-        <div class="count-note" id="c-note">${t('countNote')}</div>
+        <div class="hero-lines" aria-hidden="true">${(TOUR?['KENSHI','YONEZU','2026','2027','WORLD','TOUR']:['KENSHI','YONEZU','SINCE','2009','FAN','PAGE']).map(x=>`<span>${x}</span>`).join('')}</div>
+        <h1 class="hero-title ${TOUR?'':'fan'}" aria-label="${TOUR?'KENSHI YONEZU 2026 TOUR / GHOST':'KENSHI YONEZU FAN PAGE'}">${(TOUR?'GHOST':'YONEZU').split('').map((c,i)=>`<span style="--i:${i}">${c}</span>`).join('')}</h1>
+        <p class="hero-ja">${TOUR?'米津玄師 2026 TOUR / GHOST':t('heroFanJa')}</p>
+        <div class="hero-world">${TOUR?t('heroWorld'):t('heroFanSub')}</div>
+        ${TOUR ? heroTourBits(nx) : lastTourCard()}
         <div class="debut-days">${DEBUTS.map(x=>`<div><span>${esc(L(x.ja,x.ko))}</span> <b id="debut-${x.id}">${debutDays(x.d)}</b>${t('debutUnit')} <small>${x.d.replace(/-/g,'.')} — ${esc(L(x.sj,x.sk))}</small></div>`).join('')}</div>
       </div>
-      <div class="sec-head"><h2 class="bubble">Live Info</h2><p>${t('infoLabel')}</p></div>
-      <div class="info-grid">
-        <div><h3 class="sub-h">${t('outline')}</h3><dl class="dl">${info}</dl></div>
-        <div><h3 class="sub-h">${t('schedule')}</h3><ul class="sched">${sched}</ul>
-          <p class="small-note">${t('resale')}</p>
-          <p><a class="btn ghost sm" href="${TICKET_URL}" target="_blank" rel="noopener">${t('ep')}</a></p></div>
-      </div>
+      ${TOUR?`<div class="sec-head"><h2 class="bubble">Live Info</h2><p>${t('infoLabel')}</p></div>
+      <div class="info-grid one"><div><h3 class="sub-h">${t('outline')}</h3><dl class="dl">${info}</dl></div></div>`:''}
     </section>
-    <section id="dates">
+    ${TOUR?`<section id="dates">
       <div class="sec-head"><h2 class="bubble">Tour Dates</h2><p>${t('datesJp')} · ${t('datesWorld')}</p></div>
       <div class="dates-grid">
         <ol class="dates">${GHOST_DATES.filter(g=>!g.world).map(dateRow).join('')}</ol>
         <ol class="dates world">${GHOST_DATES.filter(g=>g.world).map(dateRow).join('')}</ol>
       </div>
-    </section>
+    </section>`:''}
+    ${ticketSection()}
     <section id="members">
       <div class="sec-head"><h2 class="bubble">Profile</h2><p>${t('membersLabel')}</p></div>
       <p class="lead">${t('membersLead')}</p>
@@ -529,6 +576,32 @@ function homeView(){
     ${appGuide()}
     ${footer()}
   </div>`;
+}
+function tourMode(){
+  const q=(location.search.match(/[?&]mode=(tour|fan)\b/)||[])[1]; if(q) return q==='tour';
+  if(typeof SITE_MODE!=='undefined' && SITE_MODE!=='auto') return SITE_MODE==='tour';
+  const last=GHOST_DATES[GHOST_DATES.length-1]; return Date.now() < showStart(last).getTime()+2*864e5;
+}
+function ticketSection(){
+  return `<section id="tickets">
+      <div class="sec-head"><h2 class="bubble">Tickets</h2><p>${t('ticketLabel')}</p></div>
+      <p class="lead">${t('ticketLead')}</p>
+      <ol class="ticket-steps">${TICKET_GUIDE[S.lang].map(([h,p],i)=>`<li><span class="no">${pad(i+1)}</span><div><h4>${esc(h)}</h4><p>${esc(p)}</p></div></li>`).join('')}</ol>
+      <p class="small-note ticket-world">${t('ticketWorld')}</p>
+      <p class="ticket-links">${TICKET_LINKS.map(([u,k])=>`<a class="btn ghost sm" href="${u}" target="_blank" rel="noopener">${t(k)}</a>`).join('')}</p>
+    </section>`;
+}
+function heroTourBits(nx){
+  return `        ${nx?`<div class="hero-next"><small>${t('nextShow')}</small><b>${fmtD(nx.d)} <span>${dow(nx.d)}</span></b><span>${esc(L(nx.city,nx.cityKo))} · ${esc(nx.v)}</span><span class="mono">${nx.st?`${nx.op?t('open')+' '+nx.op+' / ':''}${t('start')} ${nx.st}`:t('timeTbd')}</span></div>`:`<div class="hero-next"><b>${t('allDone')}</b></div>`}
+        <div class="count"><div><b id="c-d">--</b><span>DAYS</span></div><div><b id="c-h">--</b><span>HRS</span></div><div><b id="c-m">--</b><span>MIN</span></div><div><b id="c-s">--</b><span>SEC</span></div></div>
+        <div class="hero-dday" id="hero-d">${ddayText()}</div>
+        <div class="count-note" id="c-note">${t('countNote')}</div>`;
+}
+function lastTourCard(){
+  const ls=LIVES.filter(l=>l.tour==='ghost' && l.d<=TODAY).sort((a,b)=>a.d<b.d?-1:1);
+  if(!ls.length) return '';
+  const f=ls[0].d.replace(/-/g,'.'), e=ls[ls.length-1].d.replace(/-/g,'.');
+  return `<div class="hero-next"><small>${t('lastTour')}</small><b>GHOST</b><span>${f} — ${e} · ${t('lastTourN').replace('{n}',ls.length)}</span><a class="btn ghost sm" href="#lives">${t('toLives')}</a></div>`;
 }
 const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const dow = d=>DOW[new Date(d+'T12:00:00Z').getUTCDay()];
@@ -998,7 +1071,7 @@ function chantView(){
     const no = refNo!=null ? refNo : s.no;
     const used = cheersUsed(s);
     return `<a class="song-card ${refNo!=null?'ref':''}" href="#song-${esc(s.id)}">
-      ${S.chantSort==='release'?`<span class="no">${relDate(s)==='9999'?t('unreleased'):relDate(s)==='0000'?'—':relDate(s)}</span>`:no?`<span class="no">${t('track')} ${pad(no)}${ytId(s.yt)?' · '+ico('smart_display'):''}${s.ytType&&ytId(s.yt)?' '+ytBadge(s):''}</span>`:''}
+      ${S.chantSort==='release'?`<span class="no">${relDate(s)==='9999'?t('unreleased'):relDate(s)==='0000'?'—':relDate(s)}</span>`:no?`<span class="no">${t('track')} ${pad(no)}${hasVid(s.yt)?' · '+ico('smart_display'):''}${s.ytType&&hasVid(s.yt)?' '+ytBadge(s):''}</span>`:''}
       <h3>${esc(s.title||t('untitled'))}${S.lang==='ko'&&s.ko?`<small>${esc(s.ko)}</small>`:''}</h3>
       ${refNo!=null?`<div class="meta">${t('ref')}</div>`:`
       ${used.length?`<div class="acts">${used.map(id=>chip(id,false)).join('')}</div>`:''}
@@ -1036,8 +1109,6 @@ function chantView(){
     <div class="chant-tools">${ghostSwitch(true)}<i class="tools-br"></i><span>${t('sortBy')}</span><div class="chips show-pick" role="group">${[['album','sortAlbum'],['release','sortRelease'],['plays','sortPlays'],['title','sortTitle']].map(([v,k])=>`<button type="button" data-act="chantSort" data-v="${v}" aria-pressed="${S.chantSort===v}">${t(k)}</button>`).join('')}</div>
     <div class="tour-filter"><label for="call-tour">${t('callTourH')}</label><select id="call-tour"><option value="">${t('callTourAll')} (${view().songs.length})</option>${tourList().slice().reverse().map(x=>`<option value="${x.id}" ${S.callTour===x.id?'selected':''}>${esc(x.name.replace(/^米津玄師 /,''))} (${[...tourSongKeys(x.id)].filter(k=>songMap().has(k)).length})</option>`).join('')}</select>${S.callTour?`<span class="tf-n">${esc(t('callTourN').replace('{t}',tourName(S.callTour).replace(/^米津玄師 /,'')))} · ${songs.length}${t('songsCount')}</span>`:''}</div></div>
     <div class="discs">${groups || `<p class="hint">${t('filterNone')}</p>`}</div>
-    <section id="watch"><div class="sec-head"><h2 class="bubble">Watch</h2><p>${t('watchH')}</p></div>
-      <div class="cards3">${WATCH[S.lang].map(([h,p])=>`<div><h4 class="ja">${esc(h)}</h4><p>${esc(p)}</p></div>`).join('')}</div></section>
     <section id="manner"><div class="sec-head"><h2 class="bubble">Manner</h2><p>${t('mannerH')}</p></div>
       <div class="cards3">${MANNER[S.lang].map(([h,p])=>`<div><h4>${esc(h)}</h4><p>${esc(p)}</p></div>`).join('')}</div></section>
     ${footer()}
@@ -1055,7 +1126,7 @@ function songTop(s){
   return `<div class="song-top"><a class="back" href="#chant">${t('back')}</a><span class="song-top-r"><button type="button" class="btn sm req-hl" data-act="reqOpen">${ico('edit_note')} ${t('reqBtn')}</button>${S.owner?`<a class="btn sm" href="#edit-${esc(s.id)}">${ico('edit')} ${t('edit')}</a>`:''}</span></div>${songHead(s)}`;
 }
 function songMedia(s){
-  const vid=ytId(s.yt) && !S.ytFailed;
+  const vid=hasVid(s.yt) && !S.ytFailed;
   return `<div class="player" id="player">
     ${vid?'':`<button type="button" class="pp" data-act="pp" aria-label="play/pause" id="pp"></button>`}
     <span class="clock" id="pclock">0:00.0</span>
@@ -1162,12 +1233,26 @@ function onPlayStart(){
   if(window.scrollY>0) window.scrollTo(0,0);
   if(typeof setVVH==='function') setVVH();
 }
+let stopTimer = 0;
+// paused (not just a seek/buffer blip): bring the title, info and menus back
+function onPlayStop(){
+  clearTimeout(stopTimer);
+  stopTimer = setTimeout(()=>{
+    stopTimer = 0;
+    if(media.running || !document.documentElement.classList.contains('song-playing')) return;
+    S.compactSong = null;
+    document.documentElement.classList.remove('song-playing');
+    if(typeof setVVH==='function') setVVH();
+  }, 700);
+}
 function updatePlayer(force){
   const now = media.now();
   if(Math.abs(now-lastNow) > 0.01){ if(now > lastNow && now-lastNow < 3) advAt = performance.now(); lastNow = now }
   // playing = the player says so, or its clock is still moving (some phone players report their state late)
   const run = media.running || (media.yt && performance.now()-advAt < 1500);
   if(run && !wasRun) onPlayStart();
+  if(!run && wasRun) onPlayStop();
+  if(run && stopTimer){ clearTimeout(stopTimer); stopTimer=0 }
   wasRun = run;
   ['pp','mplay','tplay'].forEach(id=>{ const b=document.getElementById(id); if(b){ const want=run?'pause':'play'; if(force||b.dataset.s!==want){ b.innerHTML=run?ICON_PAUSE:ICON_PLAY; b.dataset.s=want } } });
   const ft = fmt(now);
@@ -1201,12 +1286,12 @@ function edTop(s){ return `<div class="song-top"><a class="back" href="#song-${e
 function edMedia(s){
   return `<div class="mrow"><button type="button" class="pp" data-act="pp" id="mplay" aria-label="play/pause"></button><div class="mclock"><small>${t('curTime')}</small><b id="mclock">0:00.0</b></div></div>
     <div class="nudge"><button type="button" data-act="nudge" data-v="-5">−5s</button><button type="button" data-act="nudge" data-v="-1">−1s</button><button type="button" data-act="nudge" data-v="1">+1s</button><button type="button" data-act="nudge" data-v="5">+5s</button><button type="button" data-act="mzero">0:00</button></div>
-    ${ytId(s.yt)&&!S.ytFailed?'':`<p class="hint">${t('timerNote')}</p>`}`;
+    ${hasVid(s.yt)&&!S.ytFailed?'':`<p class="hint">${t('timerNote')}</p>`}`;
 }
 function songFields(s){
   return `<div class="ed-box">
     <label class="f"><span>${t('fYtType')}</span><select id="ed-yttype" data-sf="ytType">${YT_TYPES.map(([v,k])=>`<option value="${v}" ${(s.ytType||'')===v?'selected':''}>${t(k)}</option>`).join('')}</select></label>
-    <label class="f"><span>${t('fYt')}</span><span class="row2"><input id="ed-yt" value="${esc(S.ytDraft!=null?S.ytDraft:s.yt)}" placeholder="https://www.youtube.com/watch?v=…" inputmode="url"><button type="button" class="btn sm" data-act="ytApply">${t('ytApply')}</button></span></label>
+    <label class="f"><span>${t('fYt')}</span><span class="row2"><input id="ed-yt" value="${esc(S.ytDraft!=null?S.ytDraft:s.yt)}" placeholder="YouTube / niconico URL" inputmode="url"><button type="button" class="btn sm" data-act="ytApply">${t('ytApply')}</button></span></label>
     <label class="f"><span>${t('fTitle')}</span><input id="ed-title" data-sf="title" value="${esc(s.title)}"></label>
     <label class="f"><span>${t('fKo')}</span><input id="ed-ko" data-sf="ko" value="${esc(s.ko)}"></label>
     <label class="f"><span>${t('fNoteJa')}</span><textarea id="ed-nja" data-sf="note.ja" rows="3">${esc(s.note&&s.note.ja)}</textarea></label>
@@ -1520,7 +1605,7 @@ S.mini = store.get('yz-mini')==='1';
 // Kept at 200x200px, the smallest player size YouTube's embed rules allow.
 function syncMini(){
   const r=parseRoute(); const so=r.view==='song'?songById(r.id):null;
-  document.documentElement.classList.toggle('mini-video', !!(S.mini && so && ytId(so.yt) && !S.ytFailed));
+  document.documentElement.classList.toggle('mini-video', !!(S.mini && so && hasVid(so.yt) && !S.ytFailed));
 }
 function syncFab(){
   syncMini();
@@ -2134,7 +2219,7 @@ function spyNow(){
 }
 function spy(){
   const r=parseRoute();
-  spyIds = (r.view==='home' ? ['info','dates','members','history','app'] : r.view==='chant' ? ['chant',...DISCS.map(d=>'disc-'+d.id),'watch','manner'] : r.view==='lives' ? ['lives',...liveYears().map(y=>'y-'+y),'receipt'] : []).filter(id=>document.getElementById(id));
+  spyIds = (r.view==='home' ? ['info','dates','tickets','members','history','app'] : r.view==='chant' ? ['chant',...DISCS.map(d=>'disc-'+d.id),'manner'] : r.view==='lives' ? ['lives',...liveYears().map(y=>'y-'+y),'receipt'] : []).filter(id=>document.getElementById(id));
   syncHeader(); spyNow();
 }
 window.addEventListener('scroll', ()=>{ if(!spyQueued){ spyQueued=true; requestAnimationFrame(spyNow) } }, {passive:true});
@@ -2153,7 +2238,7 @@ window.addEventListener('resize', ()=>{
 });
 function cbarLabel(id){
   if(!id) return ['',''];
-  const m={info:['Live Info','navInfo'],dates:['Tour Dates','datesH'],stats:['Setlist Stats','navStats'],'st-album':['Albums','albumMixH'],'st-tours':['Tours','tourMixH'],'st-rank':['Songs','rankH'],'st-matrix':['Changes','matrixH'],'st-diff':['Changes','diffH'],'st-count':['Songs','songCountH'],members:['Profile','navMembers'],history:['History','navHistory'],setlist:['Setlist','navSetlist'],app:['App','navApp'],chant:['Call Guide','navCallTop'],watch:['Watch','navWatch'],manner:['Manner','navManner']};
+  const m={info:['Live Info','navInfo'],dates:['Tour Dates','datesH'],tickets:['Tickets','navTickets'],stats:['Setlist Stats','navStats'],'st-album':['Albums','albumMixH'],'st-tours':['Tours','tourMixH'],'st-rank':['Songs','rankH'],'st-matrix':['Changes','matrixH'],'st-diff':['Changes','diffH'],'st-count':['Songs','songCountH'],members:['Profile','navMembers'],history:['History','navHistory'],setlist:['Setlist','navSetlist'],app:['App','navApp'],chant:['Call Guide','navCallTop'],watch:['Watch','navWatch'],manner:['Manner','navManner']};
   if(m[id]) return [m[id][0], t(m[id][1])];
   if(id.startsWith('disc-')) return ['Call Guide', discOf(id.slice(5)).name];
   if(id==='lives') return ['Lives', t('navLives')];
