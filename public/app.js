@@ -399,7 +399,7 @@ function parseRoute(){
 }
 function render(keep){
   document.documentElement.lang = S.lang;
-  { const tt = tourMode() ? '米津玄師 GHOST Fan Page' : '米津玄師 Fan Page'; if(document.title!==tt) document.title=tt }
+  { const tt = tourMode() ? '米津玄師 Fanpage — GHOST' : '米津玄師 Fanpage'; if(document.title!==tt) document.title=tt }
   if(S.loading||S.loadErr){ root.innerHTML = `<div class="boot"><span class="bubble ${tourMode()?'':'kanji'}">${tourMode()?'GHOST':'米津玄師'}</span><p>${S.loadErr?t('loadErr'):t('loading')}</p></div>`; return }
   const r=parseRoute();
   let song=null;
@@ -648,7 +648,7 @@ function appGuide(){
   return `<section id="app">
       <div class="sec-head"><h2 class="bubble">App</h2><p>${t('appLabel')}</p></div>
       <div class="app-guide">
-        <div class="app-icon"><img src="/icon-192.png" alt="" width="96" height="96"><b>Yonezu GHOST</b></div>
+        <div class="app-icon"><img src="/icon-192.png" alt="" width="96" height="96"><b>米津玄師 Fanpage</b></div>
         <div class="app-body">
           <p class="lead">${t('appLead')}</p>
           ${STANDALONE?`<p class="okmsg">${t('appAlready')}</p>`:`
@@ -938,7 +938,7 @@ async function rcSave(quiet){
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000);
   const m=document.getElementById('rc-msg'); if(m) m.textContent=quiet||t('rcSaved');
 }
-const siteBase = ()=>/^https?:/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin : 'https://yonezu-ghost.workers.dev';
+const siteBase = ()=>/^https?:/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin : 'https://yonezu.fanpage.workers.dev';
 function shareText(){ return siteBase()+'/#lives\n#米津玄師 #GHOSTレシート' }
 function xIntent(R){
   const txt = t('rcXText').replace('{n}', R.ls.length) + '\n#米津玄師 #GHOSTレシート';
