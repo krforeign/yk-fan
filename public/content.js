@@ -305,13 +305,8 @@ const MANNER = {
 };
 const SOURCES = [
   ['https://reissuerecords.net/','REISSUE RECORDS · 米津玄師 official site'],
-  ['https://ticket.kenshiyonezu.jp/tour/2026','米津玄師 オフィシャルチケットサイト'],
   ['https://ja.wikipedia.org/wiki/米津玄師','Wikipedia · 米津玄師'],
-  ['https://ja.wikipedia.org/wiki/米津玄師の作品','Wikipedia · 米津玄師の作品'],
-  ['https://www.thefirsttimes.jp/news/0000840280/','THE FIRST TIMES · GHOST 一般発売・日程'],
-  ['https://realsound.jp/2026/10/post-2555048.html','Real Sound · WORLD TOUR / GHOST'],
-  ['https://mikiki.tokyo.jp/articles/-/46465','Mikiki · 「春が灯り」'],
-  ['https://press.moviewalker.jp/news/article/1454025/','MOVIE WALKER PRESS · 「こんにちはごきげんよう！」']
+  ['https://ja.wikipedia.org/wiki/米津玄師の作品','Wikipedia · 米津玄師の作品']
 ];
 const ACT_KEYS = ['cr','shout','clap','jump','sing','watch'];
 const ACT_LABEL = {cr:'C&R',shout:'SHOUT',clap:'CLAP',jump:'JUMP',sing:'SING',watch:'WATCH'};
