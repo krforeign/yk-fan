@@ -204,3 +204,11 @@ export async function requests(request, env, ctx, url) {
   }
   return notAllowed('GET, POST, PATCH, DELETE');
 }
+
+// Visitor's country from Cloudflare's own lookup (no third-party service, nothing stored).
+// The page uses it only on a first visit, to open in Korean for visitors in Korea.
+export async function geo(request) {
+  if (request.method !== 'GET') return notAllowed('GET');
+  const country = (request.cf && request.cf.country) || request.headers.get('CF-IPCountry') || null;
+  return json({ country }, 200, { 'Cache-Control': 'private, no-store' });
+}

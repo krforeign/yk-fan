@@ -4,7 +4,7 @@
 import { json, secure, HttpError } from './util.js';
 import * as routes from './routes.js';
 
-const ROUTES = { data: routes.data, login: routes.login, translate: routes.translate, lrclib: routes.lrclib, requests: routes.requests };
+const ROUTES = { data: routes.data, login: routes.login, translate: routes.translate, lrclib: routes.lrclib, requests: routes.requests, geo: routes.geo };
 
 export default {
   async fetch(request, env, ctx) {
