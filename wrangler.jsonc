@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "yonezu-ghost",
+  "name": "yonezu",
   "main": "worker/index.js",
   "compatibility_date": "2026-11-01",
   // Static files come straight from public/. Only /api/* runs the Worker.
