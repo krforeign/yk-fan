@@ -1571,3 +1571,11 @@ button.sl-head{width:100%;background:none;border:0;border-bottom:1px solid var(-
 /* general visitors: lyrics without the time column, player without the clock */
 .ln.nots{grid-template-columns:minmax(0,1fr)}
 .player.noclock .clock{display:none}
+
+/* Korean view: Korea shows highlighted, Korea ticket card */
+.dates li.kr .dv b{color:var(--lav)}
+.dates li.kr{background:color-mix(in srgb, var(--uv) 14%, transparent)}
+.kr-ticket{margin:14px 0 26px;padding:16px 18px;border:1px solid color-mix(in srgb, var(--lav) 45%, var(--rule));border-radius:var(--r,14px);background:color-mix(in srgb, var(--uv) 10%, transparent)}
+.kr-ticket .sub-h{margin-top:0}
+.kr-ticket p{margin:12px 0 0}
+.jp-guide-h{margin-top:8px}

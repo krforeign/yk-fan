@@ -19,9 +19,9 @@ const GHOST_DATES = [
   {d:'2026-12-17', st:'18:30', tz:'+09:00', city:'神奈川', cityKo:'가나가와', v:'K-Arena Yokohama', fin:true},
   {d:'2026-12-26', st:'18:00', tz:'+08:00', city:'台北', cityKo:'타이베이', v:'TAIPEI DOME', world:true},
   {d:'2026-12-27', st:'18:00', tz:'+08:00', city:'台北', cityKo:'타이베이', v:'TAIPEI DOME', world:true},
-  {d:'2027-01-14', tz:'+09:00', city:'ソウル', cityKo:'서울', v:'INSPIRE ARENA', world:true},
-  {d:'2027-01-16', tz:'+09:00', city:'ソウル', cityKo:'서울', v:'INSPIRE ARENA', world:true},
-  {d:'2027-01-17', tz:'+09:00', city:'ソウル', cityKo:'서울', v:'INSPIRE ARENA', world:true},
+  {d:'2027-01-14', st:'19:30', tz:'+09:00', city:'ソウル', cityKo:'인천', v:'INSPIRE ARENA', world:true},
+  {d:'2027-01-16', st:'19:00', tz:'+09:00', city:'ソウル', cityKo:'인천', v:'INSPIRE ARENA', world:true},
+  {d:'2027-01-17', st:'19:00', tz:'+09:00', city:'ソウル', cityKo:'인천', v:'INSPIRE ARENA', world:true},
   {d:'2027-01-29', tz:'+08:00', city:'シンガポール', cityKo:'싱가포르', v:'Singapore Indoor Stadium', world:true},
   {d:'2027-01-30', st:'20:00', tz:'+08:00', city:'シンガポール', cityKo:'싱가포르', v:'Singapore Indoor Stadium', world:true},
   {d:'2027-02-04', st:'20:00', tz:'-08:00', city:'オークランド', cityKo:'오클랜드', v:'Oakland Arena', world:true},
@@ -38,6 +38,11 @@ const showStart = g=>new Date(g.d+'T'+(g.st||'00:00')+':00'+g.tz);
 // Set 'tour' or 'fan' to force one. Preview either with ?mode=fan / ?mode=tour in the address.
 const SITE_MODE = 'auto';
 // How tickets for Kenshi Yonezu's shows in Japan are usually sold (general guide, no dates).
+// Korea shows (shown first in the Korean view until they are over). Source: NOL Ticket product page.
+const KR_TICKET = {
+  url:'https://nol.yanolja.com/ticket/products/26015024',
+  rows:[['공연','2027.01.14 (목) 19:30 · 01.16 (토) 19:00 · 01.17 (일) 19:00'],['장소','인천 인스파이어 아레나'],['예매처','NOL 티켓 (일반 예매 2026.10.22 (목) 12:00 오픈 · 1인 2매)'],['가격','플로어석 172,000원 · 지정석 P 165,000원 · R 154,000원 · S 143,000원'],['티켓','종이 티켓 일괄 배송 (2026.12.16부터)'],['휠체어석','NOL 고객센터(1544-1555) 전화 예매만 가능']]
+};
 const TICKET_LINKS = [['https://ticket.kenshiyonezu.jp/','ticketSite'],['https://faq.ticket.kenshiyonezu.jp/hc/ja','ticketFaq'],['https://reissuerecords.net/','officialSite']];
 const TICKET_GUIDE = {
   ja:[
@@ -69,7 +74,7 @@ const T = {
     navInfo:'公演情報', navMembers:'プロフィール', navHistory:'ヒストリー', navSetlist:'セットリスト',
     navCallTop:'曲一覧', navWatch:'見どころ', navManner:'マナー', toBudo:'次の公演まで',
     countNote:'次の公演の開演 (現地時間) までのカウントダウン', countLive:'いま公演中!', countDone:'GHOST、ありがとう。',
-    outline:'Outline', schedule:'Ticket Schedule', ep:'公式チケットサイト ↗', navTickets:'チケット', ticketLabel:'日本公演のチケットの取り方', ticketLead:'販売日程は国や公演ごとに違うので、ここでは日本公演でよくある流れだけをまとめています。日程や条件は必ず公式の案内で確認してください。', ticketWorld:'海外公演 (WORLD TOUR など) は、その国のプロモーターが販売します。各国の公式案内を確認してください。日本公演に海外から申し込む場合も、登録や支払いの条件を公式 FAQ で事前に確認しておくと安心です。', ticketSite:'公式チケットサイト ↗', ticketFaq:'チケット FAQ ↗', officialSite:'公式サイト ↗', fanBrand:'Unofficial Fan Page', heroFanJa:'米津玄師 非公式ファンページ', heroFanSub:'コールガイド · ライブ記録 · セトリ統計', lastTour:'最新ツアー', lastTourN:'全{n}公演', toLives:'公演記録へ →',
+    outline:'Outline', schedule:'Ticket Schedule', ep:'公式チケットサイト ↗', navTickets:'チケット', tabSongs:'曲', songsLead:'米津玄師・ハチの曲をアルバムごとに収録。曲をタップすると、動画に合わせて歌詞が流れます。', ticketLabel:'日本公演のチケットの取り方', ticketLead:'販売日程は国や公演ごとに違うので、ここでは日本公演でよくある流れだけをまとめています。日程や条件は必ず公式の案内で確認してください。', ticketWorld:'海外公演 (WORLD TOUR など) は、その国のプロモーターが販売します。各国の公式案内を確認してください。日本公演に海外から申し込む場合も、登録や支払いの条件を公式 FAQ で事前に確認しておくと安心です。', ticketSite:'公式チケットサイト ↗', ticketFaq:'チケット FAQ ↗', officialSite:'公式サイト ↗', fanBrand:'Unofficial Fan Page', heroFanJa:'米津玄師 非公式ファンページ', heroFanSub:'コールガイド · ライブ記録 · セトリ統計', lastTour:'最新ツアー', lastTourN:'全{n}公演', toLives:'公演記録へ →',
     resale:'チケットの受付はすべて終了しています。最新情報は公式サイト・公式チケットサイトで確認してください。',
     stLive:'受付中', stDone:'終了', stSoon:'予定',
     membersLabel:'プロフィール', historyLabel:'ヒストリー 2009 — 2027', setlistLabel:'最近のセットリスト', infoLabel:'公演情報',
@@ -127,7 +132,7 @@ const T = {
     navInfo:'공연 정보', navMembers:'프로필', navHistory:'연혁', navSetlist:'셋리스트',
     navCallTop:'곡 목록', navWatch:'감상 포인트', navManner:'매너', toBudo:'다음 공연까지',
     countNote:'다음 공연 개연 (현지 시간)까지 남은 시간', countLive:'지금 공연 중!', countDone:'GHOST, 고마웠어요.',
-    outline:'Outline', schedule:'Ticket Schedule', ep:'공식 티켓 사이트 ↗', navTickets:'티켓', ticketLabel:'일본 공연 티켓 구하는 법', ticketLead:'판매 일정은 나라와 공연마다 달라서, 여기서는 일본 공연에서 흔한 흐름만 정리했어요. 일정과 조건은 꼭 공식 안내에서 확인해 주세요.', ticketWorld:'해외 공연(WORLD TOUR 등)은 그 나라의 프로모터가 판매해요. 각 나라의 공식 안내를 확인해 주세요. 해외에서 일본 공연에 신청할 때도 가입·결제 조건을 공식 FAQ에서 미리 확인해 두면 안심이에요.', ticketSite:'공식 티켓 사이트 ↗', ticketFaq:'티켓 FAQ ↗', officialSite:'공식 사이트 ↗', fanBrand:'Unofficial Fan Page', heroFanJa:'요네즈 켄시 비공식 팬페이지', heroFanSub:'콜 가이드 · 공연 기록 · 셋리 통계', lastTour:'최근 투어', lastTourN:'전 {n}공연', toLives:'공연 기록 보기 →',
+    outline:'Outline', schedule:'Ticket Schedule', ep:'공식 티켓 사이트 ↗', navTickets:'티켓', krShow:'내한 공연', krCountNote:'내한 공연 개연까지 남은 시간', krToBudo:'내한 공연까지', krTicketH:'내한 공연 티켓', krTicketBtn:'NOL 티켓 예매 페이지 ↗', jpTicketH:'일본 공연 티켓 구하는 법', ticketLabel:'일본 공연 티켓 구하는 법', ticketLead:'판매 일정은 나라와 공연마다 달라서, 여기서는 일본 공연에서 흔한 흐름만 정리했어요. 일정과 조건은 꼭 공식 안내에서 확인해 주세요.', ticketWorld:'해외 공연(WORLD TOUR 등)은 그 나라의 프로모터가 판매해요. 각 나라의 공식 안내를 확인해 주세요. 해외에서 일본 공연에 신청할 때도 가입·결제 조건을 공식 FAQ에서 미리 확인해 두면 안심이에요.', ticketSite:'공식 티켓 사이트 ↗', ticketFaq:'티켓 FAQ ↗', officialSite:'공식 사이트 ↗', fanBrand:'Unofficial Fan Page', heroFanJa:'요네즈 켄시 비공식 팬페이지', heroFanSub:'콜 가이드 · 공연 기록 · 셋리 통계', lastTour:'최근 투어', lastTourN:'전 {n}공연', toLives:'공연 기록 보기 →',
     resale:'티켓 접수는 모두 끝났어요. 최신 정보는 공식 사이트·공식 티켓 사이트에서 확인해 주세요.',
     stLive:'접수 중', stDone:'종료', stSoon:'예정',
     membersLabel:'프로필', historyLabel:'연혁 2009 — 2027', setlistLabel:'최근 셋리스트', infoLabel:'공연 정보',
