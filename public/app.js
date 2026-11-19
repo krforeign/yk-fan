@@ -111,7 +111,7 @@ attCall:'이 가사의 콜 (함께 표시)', attUp:'위 가사에 붙이기', at
   attAll:'떨어진 콜을 가사에 한 번에 붙이기', attAllP:'시간이 없는 \'호응 전용 줄\'을 바로 위 가사 줄로 합쳐요.', attAllDone:'콜 {n}개를 가사에 붙였어요.',
   shiftH:'전체 이동', shiftP:'모든 시간을 같은 만큼 옮겨요 (영상 전주가 음원과 다를 때).', shiftFirst:'첫 가사를 지금 시간에 맞추기',
   previewNote:'파일을 직접 연 미리보기예요 (보기 전용). 로그인·편집·저장·자동 입력은 서버가 필요해서, Cloudflare에 배포하거나 `npm run dev`로 열어 주세요.',
-  tabLive:'공연 기록', navLives:'공연 목록', navReceipt:'영수증',
+  tabLive:'공연', navLives:'공연 목록', navReceipt:'영수증',
   livesLabel:'요네즈 켄시·하치의 모든 공연·페스티벌', livesLead:'다녀온 공연과 갈 예정인 공연에 체크하면, 참여한 공연 수와 가장 많이 들은 노래를 영수증으로 뽑아 줘요. 체크한 내용은 이 기기의 브라우저에만 저장돼요.',
   kS:'단독 공연', kF:'페스티벌', kE:'이벤트·대반', kAll:'전체', upcoming:'예정', noSet:'셋리스트 미등록', showSet:'셋리스트', songsN:'{n}곡',
   pickAll:'보이는 공연 모두 체크', pickNone:'체크 모두 해제', picked:'{n}개 공연 선택', toReceipt:'영수증 보기',
