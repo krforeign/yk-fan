@@ -1610,3 +1610,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* Top tabs: each tab takes the width its label needs, so longer labels never spill into the next control */
 .seg.tabs{grid-template-columns:none !important;display:flex !important}
 .seg.tabs a{flex:1 1 auto;padding-inline:10px}
+
+/* PC windows 901-1080px wide: keep video | lyrics side by side (stacked, the lyrics box was squeezed to one line) */
+@media (min-width:901px) and (max-width:1080px){
+  .song-mode .song-body{grid-template-columns:minmax(0,42%) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:18px}
+}
+/* phones: no background blur behind the top menu on song pages (costly while lyrics scroll) */
+@media (max-width:900px){ html.song-root .side::before{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--paper)} }

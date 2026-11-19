@@ -419,7 +419,7 @@ function render(keep){
     root.innerHTML = `<div class="app ${song?'media-page':''} ${song&&!editing?'song-mode':''}"><aside class="side" id="side" aria-label="Menu"></aside><main>${song?'<div id="obar"></div>'+frame(song, editing):frame(song, editing).replace('<div id="pane">','<div id="obar"></div><div id="pane">')}</main></div>`;
     S.renderedKey = key; sideKey = ''; rebuilt = true;
     fill(r, song, editing);
-    if(song) mountPlayer(song);
+    if(song){ const k=key; requestAnimationFrame(()=>setTimeout(()=>{ if(S.renderedKey===k) mountPlayer(song) }, 30)) }
     if(!keep){
       requestAnimationFrame(()=>{
         // back from a song page to the song list: return to where the viewer was
@@ -956,7 +956,8 @@ function footer(){
 
 /* ================= setlist statistics ================= */
 // One key per song, shared with the data build: NFKC, case-insensitive, no spaces, featured artists dropped.
-const songKey = x=>String(x||'').normalize('NFKC').toLowerCase().replace(/\(\s*\+.*?\)/g,'').replace(/\s\+\s.*$/,'').replace(/\(cover\)/g,'').replace(/\s/g,'');
+const songKeyMemo = new Map();
+const songKey = x=>{ x=String(x||''); let k=songKeyMemo.get(x); if(k===undefined){ k=x.normalize('NFKC').toLowerCase().replace(/\(\s*\+.*?\)/g,'').replace(/\s\+\s.*$/,'').replace(/\(cover\)/g,'').replace(/\s/g,''); if(songKeyMemo.size<20000) songKeyMemo.set(x,k) } return k };
 const setOf = l=>(l.s||[]).concat(l.e||[]);
 const hasSet = l=>setOf(l).length>0;
 S.ghostOn = store.get('yz-ghost')!=='0';
@@ -1254,13 +1255,14 @@ function onPlayStop(){
     S.compactSong = null;
     document.documentElement.classList.remove('song-playing');
     if(typeof setVVH==='function') setVVH();
-  }, 700);
+  }, 250);
 }
 function updatePlayer(force){
   const now = media.now();
   if(Math.abs(now-lastNow) > 0.01){ if(now > lastNow && now-lastNow < 3) advAt = performance.now(); lastNow = now }
   // playing = the player says so, or its clock is still moving (some phone players report their state late)
-  const run = media.running || (media.yt && performance.now()-advAt < 1500);
+  const yst = media.yt && S.player && !S.player.nico && S.player.getPlayerState ? S.player.getPlayerState() : null;
+  const run = media.running || (media.yt && yst!==2 && yst!==0 && performance.now()-advAt < 1500);
   if(run && !wasRun) onPlayStart();
   if(!run && wasRun) onPlayStop();
   if(run && stopTimer){ clearTimeout(stopTimer); stopTimer=0 }
@@ -2203,7 +2205,7 @@ function setActive(id){
   activeSec = id;
   if(same) return;
   const act = document.querySelector('.nav a.active');
-  if(act && window.matchMedia('(max-width:900px)').matches){ const nav=act.closest('.nav'); nav.scrollTo({left:act.offsetLeft-8,behavior:'smooth'}) }
+  if(act && window.matchMedia('(max-width:900px)').matches){ requestAnimationFrame(()=>{ const nav=act.closest('.nav'); if(nav) nav.scrollTo({left:act.offsetLeft-8,behavior:'smooth'}) }) }
 }
 let io;
 // Height of whatever sticks to the top (menu bar on phones, section bar on desktop).
